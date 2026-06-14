@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>Lightweight in-process scheduling for Koan-built applications: a zero-dependency 1s poll loop hosting IScheduledTask runners with OnStartup/FixedDelay triggers, bounded concurrency, and per-run timeouts. The deliberately-minimal in-proc alternative to the durable Sylin.Koan.Jobs ledger.</Description>
+    <PackageTags>$(CommonPackageTags);scheduling;orchestrator;jobs;background</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
+  </ItemGroup>
+</Project>

@@ -133,8 +133,8 @@ public sealed class KoanRagAutoRegistrar : IKoanAutoRegistrar
                    string.Join("; ", corpusDescriptions)));
 
         // Configuration settings
-        var defaultStrategy = cfg["Koan:Rag:GraphStrategy"] ?? "Lightweight";
-        var rerankEnabled = cfg["Koan:Rag:RerankEnabled"] ?? "true";
+        var defaultStrategy = cfg["Agyo:Rag:GraphStrategy"] ?? "Lightweight";
+        var rerankEnabled = cfg["Agyo:Rag:RerankEnabled"] ?? "true";
 
         module.AddSetting("Rag:GraphStrategy", defaultStrategy,
             source: BootSettingSource.AppSettings);

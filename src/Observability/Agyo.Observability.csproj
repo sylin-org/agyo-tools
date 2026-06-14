@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>Opt-in observability baseline for Koan-built applications, expressed as a KoanModule: an ASP.NET Core health-checks baseline plus a resilient named HttpClient ("agyo-observability") for outbound probes. OpenTelemetry is intentionally not wired (advertised but never implemented upstream) — see the TODO in the module.</Description>
+    <PackageTags>$(CommonPackageTags);observability;health;healthchecks;resilience;httpclient</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- AddHealthChecks comes from ASP.NET Core; the resilient HttpClient pipeline rides on it. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Third-party: AddStandardResilienceHandler (standard .NET resilience pipeline). Carried
+         verbatim from the original Koan.Recipe.Observability bundle. -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Koan PUBLIC packages (Reference = Intent; resolved from agyo local-feed). -->
+    <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
+    <PackageReference Include="Sylin.Koan.Web" Version="0.17.4" />
+  </ItemGroup>
+</Project>

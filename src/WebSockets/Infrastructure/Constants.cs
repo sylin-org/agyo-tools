@@ -4,7 +4,7 @@ internal static class Constants
 {
     public static class Configuration
     {
-        public const string Section = "Koan:Web:WebSockets";
+        public const string Section = "Agyo:Web:WebSockets";
 
         public static class Keys
         {
