@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    ARCH-0079 integration suite for the Observability capability. Boots a real IHost via
+    AgyoIntegrationHost + services.AddKoan() so the ObservabilityModule (a KoanModule) is wired
+    through genuine reflective discovery, then asserts the surfaces its Register() establishes:
+    the ASP.NET Core HealthCheckService and the resilient named HttpClient "agyo-observability".
+    No external infrastructure — these are boot-smoke + behavioral (no-infra) specs.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Agyo.Testing\Agyo.Testing.csproj" />
+    <ProjectReference Include="..\..\..\src\Observability\Agyo.Observability.csproj" />
+  </ItemGroup>
+</Project>

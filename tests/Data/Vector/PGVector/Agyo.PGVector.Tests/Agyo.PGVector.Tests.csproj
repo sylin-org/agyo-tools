@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    ARCH-0079 integration specs for the PGVector vector adapter.
+      - BOOT-SMOKE [Fact]: boots a real AddKoan() via AgyoIntegrationHost and asserts the
+        PGVectorAdapterFactory is reflectively discovered as IVectorAdapterFactory (Reference = Intent).
+      - BEHAVIORAL [SkippableFact]: against a real pgvector Postgres (env-gated), ensure-created +
+        upsert + KNN search; skips cleanly when AGYO_PGVECTOR_CONNECTION_STRING is unset.
+    tests/Directory.Build.props supplies TreatWarningsAsErrors + bin/obj redirect — keep warning-clean.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
+    <!-- The capability persists entities through the vector repo; an InMemory data adapter satisfies
+         the data-layer naming/registration the host wires during AddKoan() discovery. -->
+    <PackageReference Include="Sylin.Koan.Data.Connector.InMemory" Version="0.17.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../../Agyo.Testing/Agyo.Testing.csproj" />
+    <ProjectReference Include="../../../../../src/Data/Vector/PGVector/Agyo.Data.Vector.PGVector.csproj" />
+  </ItemGroup>
+</Project>

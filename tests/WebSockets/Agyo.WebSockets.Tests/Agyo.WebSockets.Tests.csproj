@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    ARCH-0079 integration tests for the WebSockets capability. Boots real AddKoan() reflective
+    discovery via Agyo.Testing's AgyoIntegrationHost (a genuine IHost, not a fake), plus a
+    behavioral TestServer duplex round-trip. No external infra is required for this capability.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WebSockets + TestServer need the ASP.NET Core shared framework. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Agyo.Testing\Agyo.Testing.csproj" />
+    <ProjectReference Include="..\..\..\src\WebSockets\Agyo.WebSockets.csproj" />
+  </ItemGroup>
+</Project>
