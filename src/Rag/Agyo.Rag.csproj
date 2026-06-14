@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>Agyo RAG stack for Koan-built applications: entity-native corpora, agentic retrieval, emergent concept graphs, contextual chunking, and the UMAP-backed distillation pipeline. A "PowerToys for Koan" helper over Koan's public AI and Data packages.</Description>
+    <PackageTags>$(CommonPackageTags);ai;rag;corpus;retrieval;knowledge-graph</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Rag.Abstractions\Agyo.Rag.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Sylin.Koan.AI" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.AI.Contracts" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.Data.Vector" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.Data.AI" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.Data.Abstractions" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.Data.Core" Version="0.17.1" />
+    <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="UMAP" Version="1.0.62830" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>AI-powered translation helper for Koan-built applications: translate, detect-language, and chunked literary translation over Koan.AI. Opt-in in-process tool, decoupled from any service mesh.</Description>
+    <PackageTags>$(CommonPackageTags);translation;ai;language;i18n</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
+    <PackageReference Include="Sylin.Koan.AI" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.AI.Contracts" Version="0.17.0" />
+  </ItemGroup>
+</Project>

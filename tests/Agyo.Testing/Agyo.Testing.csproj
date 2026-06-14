@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Shared test infrastructure for agyo-tools (the ARCH-0079 integration-host pattern, ported from
+    Koan's tests/Shared/Koan.Testing — which is not packaged). Bootstrap-agnostic: specs call
+    services.AddKoan() themselves. Not a package.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.8" />
+  </ItemGroup>
+</Project>

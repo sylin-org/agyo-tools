@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Agyo.Data.Vector.PGVector</AssemblyName>
+    <RootNamespace>Agyo.Data.Vector.PGVector</RootNamespace>
+    <Description>PostgreSQL pgvector store for Koan-built applications: a Postgres-native vector search adapter (HNSW + IVFFlat indexing, JSONB metadata filtering) — a single-provider alternative to Qdrant for teams already on Postgres. Opt-in via Reference = Intent.</Description>
+    <PackageTags>$(CommonPackageTags);data;vector;pgvector;postgres;embeddings;semantic-search</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Third-party data-access stack (kept verbatim from the Koan original) -->
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Npgsql" Version="9.0.4" />
+    <PackageReference Include="Pgvector" Version="0.3.1" />
+    <!-- Dapper type handler for Pgvector.Vector — without it Dapper cannot bind vector parameters. -->
+    <PackageReference Include="Pgvector.Dapper" Version="0.3.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Koan PUBLIC packages (STACK-0001 layering law — agyo consumes Koan via packages only). -->
+    <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
+    <PackageReference Include="Sylin.Koan.Data.Abstractions" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.Data.Core" Version="0.17.1" />
+    <PackageReference Include="Sylin.Koan.Data.Vector.Abstractions" Version="0.17.1" />
+    <PackageReference Include="Sylin.Koan.Orchestration.Abstractions" Version="0.17.0" />
+  </ItemGroup>
+</Project>

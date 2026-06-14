@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>GraphQL-over-entities for Koan-built applications: a controller-hosted GraphQL endpoint and auto-generated schema over IEntity&lt;&gt; types, reusing the Koan.Web read-path hook pipeline. Opt-in helper kept off the Koan release train so its HotChocolate CVE cadence moves independently.</Description>
+    <PackageTags>$(CommonPackageTags);web;graphql;hotchocolate;controllers</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- HotChocolate pinned 13.9.16 to clear GHSA-qr3m-xw4c-jqw3
+         (CRITICAL: Utf8GraphQLParser StackOverflow on deeply-nested queries,
+         affects 13.x < 13.9.16). Staying in 13.x to avoid the 14/15/16 API
+         reshuffles. Kept off the Koan release train (AGYO-0001) so this CVE
+         cadence is owned here, not by Koan. -->
+    <PackageReference Include="HotChocolate.AspNetCore" Version="13.9.16" />
+    <PackageReference Include="HotChocolate.Execution" Version="13.9.16" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <!-- Exclude the Banana Cake Pop UI middleware pulled transitively to keep runtime surface minimal and avoid test-time probe issues -->
+    <PackageReference Include="BananaCakePop.Middleware" Version="16.0.3" ExcludeAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Sylin.Koan.Web" Version="0.17.4" />
+    <PackageReference Include="Sylin.Koan.Data.Core" Version="0.17.1" />
+    <PackageReference Include="Sylin.Koan.Data.Abstractions" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
+  </ItemGroup>
+</Project>

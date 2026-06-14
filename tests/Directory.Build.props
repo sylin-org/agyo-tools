@@ -1,0 +1,26 @@
+<Project>
+  <!--
+    Test projects are NOT packages and deliberately do NOT import the repo-root Directory.Build.props.
+    Mirrors Koan's tests/ conventions: warnings-as-errors, bin/obj redirected out of the repo tree.
+  -->
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Redirect bin/obj into %TEMP%\agyo-tools\tests\<ProjectName>\ to keep the repo clean (Windows). -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <_Temp>$(TEMP)</_Temp>
+    <_Temp Condition="'$(_Temp)' == ''">$(TMP)</_Temp>
+    <_BaseTestOut Condition="'$(_Temp)' != ''">$(_Temp)\agyo-tools\tests\$(MSBuildProjectName)\</_BaseTestOut>
+    <BaseOutputPath Condition="'$(_BaseTestOut)' != ''">$(_BaseTestOut)bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath Condition="'$(_BaseTestOut)' != ''">$(_BaseTestOut)obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <Target Name="AgyoTests_CleanupTempOutputs" AfterTargets="Clean"
+          Condition="'$(_BaseTestOut)' != '' And Exists('$(_BaseTestOut)')">
+    <RemoveDir Directories="$(_BaseTestOut)" ContinueOnError="true" />
+  </Target>
+</Project>
