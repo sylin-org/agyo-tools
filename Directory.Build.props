@@ -1,0 +1,72 @@
+<Project>
+  <!--
+    Agyo Tools — "PowerToys for Koan": opt-in helper libraries that depend on Koan's
+    PUBLIC packages and are never referenced by Koan (STACK-0001 layering law — names
+    never flow down). Repo shape mirrors the Koan framework's canon.
+
+    Versioning is Nerdbank.GitVersioning (operator-owned major.minor in version.json +
+    git commit height). See Directory.Build.targets for the compat-range rewrite at pack time.
+  -->
+
+  <PropertyGroup>
+    <!-- Generate XML docs for all projects to support API documentation. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Suppress missing XML comment warnings to keep builds clean while docs evolve. -->
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- CI-friendly builds (SourceLink, deterministic PDBs) -->
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == ''">true</ContinuousIntegrationBuild>
+    <!-- SourceLink/Repo metadata -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!--
+      NuGet package IDs: publish under Sylin.Agyo.* while keeping code namespaces as Agyo.*
+
+      Apply UNLESS the csproj has IsPackable=false. Source: MSBuildProjectName (the bare
+      csproj filename without extension) — always defined at props-evaluation time, unlike
+      $(AssemblyName). Projects named Agyo.* therefore publish as Sylin.Agyo.*.
+    -->
+    <PackageId Condition="'$(IsPackable)' != 'false' and '$(PackageId)' == ''">Sylin.$(MSBuildProjectName)</PackageId>
+    <!-- Common NuGet package metadata -->
+    <Authors>Sylin Labs</Authors>
+    <Company>Sylin Labs</Company>
+    <PackageProjectUrl>https://github.com/sylin-org/agyo-tools</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/sylin-org/agyo-tools.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- Prefer a README.md in the project folder; fall back to repo root README.md -->
+    <PackageReadmeFile Condition="Exists('$(MSBuildProjectDirectory)\README.md')">README.md</PackageReadmeFile>
+    <PackageReadmeFile Condition="'$(PackageReadmeFile)' == '' and Exists('$(MSBuildThisFileDirectory)README.md')">README.md</PackageReadmeFile>
+    <PackageReleaseNotes>See release notes: https://github.com/sylin-org/agyo-tools/releases</PackageReleaseNotes>
+    <!-- Common tags; projects append via $(CommonPackageTags) in their PackageTags -->
+    <CommonPackageTags>Agyo;Koan;tools;helpers;modular;dotnet;aspnetcore</CommonPackageTags>
+
+    <!-- Baseline language/features across the repo -->
+    <ImplicitUsings Condition="'$(ImplicitUsings)' == ''">enable</ImplicitUsings>
+    <Nullable Condition="'$(Nullable)' == ''">enable</Nullable>
+    <LangVersion Condition="'$(LangVersion)' == ''">latestMajor</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SourceLink for better debugging experience on NuGet -->
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+    <!-- Nerdbank.GitVersioning is the single version source — Version / AssemblyVersion /
+         FileVersion are computed from version.json (operator-owned major.minor) + git commit
+         height. PrivateAssets=all so it never flows to consumers. -->
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.9.50" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Pack project-level README if present; otherwise include repo README -->
+    <None Include="$(MSBuildProjectDirectory)\README.md" Pack="true" PackagePath="/" Condition="Exists('$(MSBuildProjectDirectory)\README.md')" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" Condition="!Exists('$(MSBuildProjectDirectory)\README.md') and Exists('$(MSBuildThisFileDirectory)README.md')" />
+    <!-- If you provide an icon.png at repo root, it will be packed and used automatically -->
+    <None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath="/" Condition="Exists('$(MSBuildThisFileDirectory)icon.png')" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)icon.png')">
+    <PackageIcon>icon.png</PackageIcon>
+  </PropertyGroup>
+</Project>

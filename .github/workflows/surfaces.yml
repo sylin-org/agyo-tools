@@ -1,0 +1,21 @@
+# Surface-ledger tripwire.
+#
+# Mirrors Koan's convention: the general build/test CI is intentionally light;
+# this standalone, purpose-built workflow guards ONE thing: that docs/SURFACES.md
+# exists and its table parses. It runs no build and no tests — it is the cheap
+# tripwire the rotation contract requires, nothing more.
+name: surfaces
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint surface ledger
+        run: bash scripts/lint-surfaces.sh docs/SURFACES.md

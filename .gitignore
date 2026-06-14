@@ -1,0 +1,72 @@
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDE/editor
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# .NET build outputs
+bin/
+obj/
+out/
+artifacts/
+TestResults/
+*.lscache
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+.nuget/packages/
+project.lock.json
+*.nuget.props
+*.nuget.g.props
+*.nuget.targets
+
+# Local package feed (current Koan bits packed for cross-repo dev)
+local-feed/
+
+# Logs & coverage
+*.log
+coverage/
+*.coverage
+*.coveragexml
+*.opencover.xml
+lcov.info
+
+# Docker/compose (override files)
+**/docker-compose.override.yml
+
+# Data files generated at runtime
+*.db
+*.db3
+/samples/**/data/**/*.sqlite
+/samples/**/data/**/*.sqlite3
+
+# Sample/local data directories
+/samples/**/data/
+
+# Web build artifacts
+wwwroot/dist/
+wwwroot/.cache/
+
+# Node
+node_modules/
+**/node_modules/
+
+# Docker runtime status artifacts
+/samples/**/ps.json
+
+# Koan/Agyo framework cache and metadata (case-sensitive for Linux/Mac)
+**/.Koan/
+**/.koan/
+**/.Agyo/
+**/.agyo/
+nul

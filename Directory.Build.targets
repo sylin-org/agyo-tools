@@ -1,0 +1,13 @@
+<Project>
+  <!--
+    Package versions are computed by Nerdbank.GitVersioning from version.json (operator-owned
+    major.minor) + git commit height. nbgv sets Version / AssemblyVersion / FileVersion directly.
+
+    Rewrite Agyo->Agyo ProjectReference dependency versions to bounded compatibility ranges at
+    pack time (build/compat-ranges.targets) so a stale package never resolves against an
+    incompatible newer sibling. Escape hatch: -p:KoanDisableCompatRanges=true (name preserved
+    for parity with the ported target).
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)build/compat-ranges.targets"
+          Condition="Exists('$(MSBuildThisFileDirectory)build/compat-ranges.targets')" />
+</Project>

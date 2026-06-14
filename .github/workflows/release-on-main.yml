@@ -1,0 +1,108 @@
+name: Release on main
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # needed to push the release tag
+
+jobs:
+  release:
+    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for Nerdbank.GitVersioning)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+      - name: Configure git for the release tag
+        shell: pwsh
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Restore + build the solution (Release, PublicRelease)
+        shell: pwsh
+        run: |
+          dotnet build Agyo.sln -c Release --nologo "-p:NuGetAudit=false" "-p:PublicRelease=true"
+          if ($LASTEXITCODE -ne 0) { throw "Build failed -- refusing to release a broken main." }
+      - name: Pack all packable projects (PublicRelease=true)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts/nuget -Force | Out-Null
+          $csprojs = @(Get-ChildItem -Path src -Recurse -Filter *.csproj)
+          Write-Host "Packing $($csprojs.Count) candidate project(s) ..."
+          $failed = @()
+          foreach ($c in $csprojs) {
+            dotnet restore $c.FullName --nologo "-p:NuGetAudit=false" 2>&1 | Out-Null
+            dotnet pack $c.FullName -c Release --nologo `
+              "-p:PublicRelease=true" `
+              "-p:NuGetAudit=false" `
+              -o artifacts/nuget
+            if ($LASTEXITCODE -ne 0) {
+              $failed += $c.Name
+              Write-Host "::warning::Pack returned non-zero for $($c.Name). Continuing."
+            }
+          }
+          $produced = @(Get-ChildItem artifacts/nuget/*.nupkg -File)
+          Write-Host "Pack summary: $($produced.Count) nupkg(s) produced; $($failed.Count) project(s) returned non-zero."
+          if ($produced.Count -eq 0) { throw "Zero packages produced -- check per-pack errors above." }
+      - name: Compute date-based release tag
+        id: tag
+        shell: pwsh
+        run: |
+          $base = "release/$(Get-Date -Format 'yyyy-MM-dd')"
+          $tag  = $base
+          $n    = 1
+          while (git tag --list $tag) {
+            $n++
+            $tag = "$base-$n"
+          }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Release tag: $tag"
+      - name: Create and push release tag
+        shell: pwsh
+        run: |
+          git tag -a "${{ steps.tag.outputs.tag }}" -m "Release ${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+      - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrEmpty($env:NUGET_API_KEY)) {
+            Write-Host "::warning::NUGET_API_KEY is empty."
+            Write-Host "::warning::Tag ${{ steps.tag.outputs.tag }} is up; packages NOT published."
+            exit 0
+          }
+          $failed = @()
+          $packages = @(Get-ChildItem artifacts/nuget/*.nupkg  -File)
+          $symbols  = @(Get-ChildItem artifacts/nuget/*.snupkg -File -ErrorAction SilentlyContinue)
+          foreach ($pkg in $packages) {
+            dotnet nuget push $pkg.FullName `
+              --source https://api.nuget.org/v3/index.json `
+              --api-key $env:NUGET_API_KEY `
+              --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { $failed += $pkg.Name; Write-Host "::warning::Failed to publish $($pkg.Name)." }
+          }
+          foreach ($sym in $symbols) {
+            dotnet nuget push $sym.FullName `
+              --source https://api.nuget.org/v3/index.json `
+              --api-key $env:NUGET_API_KEY `
+              --skip-duplicate
+          }
+          if ($failed.Count -gt 0) { throw "$($failed.Count) main package(s) failed to publish." }
+      - name: Summary
+        if: always()
+        shell: pwsh
+        run: |
+          "## Agyo release" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
