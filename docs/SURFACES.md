@@ -11,9 +11,9 @@ as the migration plan (docs/decisions/AGYO-0001) lands each capability from the 
 
 | Surface | Exercised by | Last exercised | Guard | Notes |
 |---|---|---|---|---|
-| Repo shape (Directory.Build.props, NBGV, Sylin.Agyo.* package IDs) | local build + pack | unknown since 2026-06-14 | scripts/green-ratchet.ps1 (build leg) | Skeleton ported from Koan canon; pre-first-package. |
+| Repo shape (Directory.Build.props, NBGV, Sylin.Agyo.* package IDs) | local build + pack | 2026-06-14 | scripts/green-ratchet.ps1 (build leg) | Validated: Sylin.Agyo.WebSockets.0.1.2 packs with correct id/version/license/Koan dependency. |
 | Surface-ledger tripwire | .github/workflows/surfaces.yml | 2026-06-14 | scripts/lint-surfaces.sh | This ledger; runs on push/PR to main+dev. |
-| Agyo.WebSockets | none yet | unknown since 2026-06-14 | pending migration | Resurrect from Koan ffef0899~1; bidirectional duplex streaming (distinct from SSE). |
+| Agyo.WebSockets | local build + pack | 2026-06-14 | scripts/green-ratchet.ps1 (build leg) | Migrated from Koan ffef0899~1; builds+packs against Sylin.Koan.Core. Unit tests (5) still to port — not test-canon "done" per AGYO-0001. |
 | Agyo.Rag | none yet | unknown since 2026-06-14 | pending migration | Move from Koan attic/Koan.Rag; ships untested today — needs a first spec. |
 | Agyo.Web.GraphQl | none yet | unknown since 2026-06-14 | pending migration | Resurrect from Koan tag attic/koan-web-graphql; HotChocolate CVE cadence now lives here. |
 | Agyo.Data.Vector.PGVector | none yet | unknown since 2026-06-14 | pending migration | Resurrect from Koan tag attic/pgvector; needs the IVectorFilterTranslator finish + a real pgvector spec. |

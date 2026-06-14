@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>WebSocket stream helpers for Koan-built applications: bidirectional duplex streaming exposed as a Stream. Distinct from SSE (server-to-client only).</Description>
+    <PackageTags>$(CommonPackageTags);websockets;streaming;realtime</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
+  </ItemGroup>
+</Project>
