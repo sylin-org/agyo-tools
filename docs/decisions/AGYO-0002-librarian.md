@@ -114,13 +114,14 @@ resolve.
   Embedding → Indexer with **0 errors**. A real Librarian bug was fixed in passing: a force re-index of a
   brand-new file mis-classified it as "Changed" and threw looking up a non-existent manifest entry.
 
-**Pending (tracked for P4):**
-- The **retrieval round-trip** (`get-references` search) rides the bespoke async outbox
-  (`ChunkVectorState` → `VectorSyncWorker` → Weaviate write). That write path has a persistence gap (the
-  per-project class is created but the object does not land), so search returns empty. This is the exact
-  layer the Agyo.Rag re-platform supersedes (Rag writes vectors inline), so it is **not** patched in the
-  bespoke path — it is the target of P4c. The behavioral spec asserts the verified ingest half and logs
-  the search probe rather than asserting it (so it passes with infra present).
+**Resolved in AGYO-0003 (P4c):**
+- The **retrieval round-trip** (`get-references` search) used to ride the bespoke async outbox
+  (`ChunkVectorState` → `VectorSyncWorker` → Weaviate write), which had a persistence gap (the per-project
+  class was created but the object did not land), so search returned empty. The Agyo.Rag re-platform
+  **supersedes** that layer (Rag writes vectors inline at ingest) and the Weaviate connector was fixed to
+  return stored metadata on search, so the cited round-trip now works end to end. The behavioral spec
+  **asserts** the round-trip (real chunk text + file provenance) instead of logging it. See
+  [AGYO-0003](AGYO-0003-rag-uplift-and-librarian-slim.md).
 
 ## Consequences
 
