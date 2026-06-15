@@ -94,4 +94,19 @@ public static class Rag
     /// </summary>
     public static IDisposable WithPartition(string partition)
         => Koan.Data.Core.EntityContext.Partition(partition);
+
+    // ── Repository Discovery ────────────────────────────────────────────
+
+    /// <summary>
+    /// Discover ingestable code + docs files under a repository root (gitignore-aware), producing the
+    /// path list for <c>Corpus&lt;T&gt;().Ingest(...)</c>. Zero-config defaults cover common code/doc types
+    /// and exclude build/vendor output.
+    /// <para><c>await Rag.Corpus&lt;Doc&gt;().Ingest(Rag.Discover(repoRoot));</c></para>
+    /// </summary>
+    public static IEnumerable<string> Discover(string repoRoot)
+        => Content.Discovery.RepoDiscovery.Enumerate(repoRoot, RepoDiscoveryOptions.Default);
+
+    /// <summary>Discover with custom include/exclude globs and filters.</summary>
+    public static IEnumerable<string> Discover(string repoRoot, RepoDiscoveryOptions options)
+        => Content.Discovery.RepoDiscovery.Enumerate(repoRoot, options);
 }

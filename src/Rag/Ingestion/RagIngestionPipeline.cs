@@ -408,7 +408,10 @@ internal sealed class RagIngestionPipeline : IRagIngestionPipeline
                             ["parent_id"] = child.ParentId ?? "",
                             ["section"] = child.SectionTitle ?? segment.StructuralContext ?? "",
                             ["title"] = documentTitle ?? "",
-                            ["is_child"] = true
+                            ["is_child"] = true,
+                            ["text"] = child.Text,
+                            [RagChunkProvenance.Keys.FilePath] = filePath,
+                            [RagChunkProvenance.Keys.Language] = LanguageFromPath(filePath)
                         },
                         ct);
 
@@ -466,7 +469,12 @@ internal sealed class RagIngestionPipeline : IRagIngestionPipeline
                     ["parent_id"] = child.ParentId ?? "",
                     ["section"] = child.SectionTitle ?? "",
                     ["title"] = docTitle ?? "",
-                    ["is_child"] = true
+                    ["is_child"] = true,
+                    // Provenance + chunk text so retrieval is chunk-precise and cite-by-file (the file
+                    // path is known here). Round-trips back via VectorMatch.Metadata (Agyo.Rag uplift).
+                    ["text"] = child.Text,
+                    [RagChunkProvenance.Keys.FilePath] = filePath,
+                    [RagChunkProvenance.Keys.Language] = LanguageFromPath(filePath)
                 },
                 ct);
 
@@ -572,6 +580,32 @@ internal sealed class RagIngestionPipeline : IRagIngestionPipeline
 
         return new GraphDelta { AddedRelationships = addedRelationships };
     }
+
+    private static string LanguageFromPath(string filePath) => Path.GetExtension(filePath).ToLowerInvariant() switch
+    {
+        ".cs" => "csharp",
+        ".ts" or ".tsx" => "typescript",
+        ".js" or ".jsx" or ".mjs" or ".cjs" => "javascript",
+        ".py" => "python",
+        ".go" => "go",
+        ".rs" => "rust",
+        ".java" => "java",
+        ".kt" or ".kts" => "kotlin",
+        ".rb" => "ruby",
+        ".php" => "php",
+        ".c" or ".h" => "c",
+        ".cpp" or ".cc" or ".cxx" or ".hpp" => "cpp",
+        ".swift" => "swift",
+        ".sql" => "sql",
+        ".sh" or ".bash" => "shell",
+        ".md" or ".markdown" => "markdown",
+        ".json" => "json",
+        ".yml" or ".yaml" => "yaml",
+        ".xml" or ".csproj" or ".props" or ".targets" => "xml",
+        ".html" or ".htm" => "html",
+        ".css" or ".scss" => "css",
+        _ => ""
+    };
 
     private static string ComputeDocumentId(string filePath)
     {

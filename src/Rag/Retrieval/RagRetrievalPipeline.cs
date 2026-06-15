@@ -62,11 +62,14 @@ internal sealed class RagRetrievalPipeline : IRagRetrievalPipeline
             var searchSw = Stopwatch.StartNew();
             var queryEmbedding = await Koan.AI.Client.Embed(query, ct);
 
+            // Per-query knob overrides fall back to the global RagOptions defaults (Agyo.Rag uplift).
+            var alpha = options.HybridAlpha ?? _options.HybridAlpha;
+            var topN = options.RerankTopN ?? _options.RerankTopN;
             var searchResult = await Koan.Data.Vector.Vector<TEntity>.Search(
                 vector: queryEmbedding,
                 text: query,
-                alpha: _options.HybridAlpha,
-                topK: _options.RerankTopN * 2, // Retrieve 2x for reranking headroom
+                alpha: alpha,
+                topK: topN * 2, // Retrieve 2x for reranking headroom
                 filter: options.Filter,
                 ct: ct);
 
@@ -108,7 +111,7 @@ internal sealed class RagRetrievalPipeline : IRagRetrievalPipeline
             var contextParts = new List<string>();
 
             // Add vector search results — load entities in parallel
-            var matchSubset = searchResult.Matches.Take(_options.RerankTopN).ToList();
+            var matchSubset = searchResult.Matches.Take(topN).ToList();
             var hydrationTasks = matchSubset.Select(match =>
             {
                 var documentId = match.Id.Contains(':') ? match.Id[..match.Id.IndexOf(':')] : match.Id;
@@ -143,6 +146,10 @@ internal sealed class RagRetrievalPipeline : IRagRetrievalPipeline
                 };
             }
 
+            // Apply the optional per-query token budget (highest-scored chunks are first).
+            if (options.MaxContextTokens is { } budget && budget > 0)
+                contextParts = TrimToTokenBudget(contextParts, budget);
+
             var context = string.Join("\n\n---\n\n", contextParts);
 
             // ── Step 4: Generate answer with structural role separation ──
@@ -167,7 +174,7 @@ internal sealed class RagRetrievalPipeline : IRagRetrievalPipeline
 
             // Build source citations
             var sources = searchResult.Matches
-                .Take(_options.RerankTopN)
+                .Take(topN)
                 .Select(m => new RagSource(
                     DocumentId: m.Id,
                     DocumentTitle: null,
@@ -308,14 +315,30 @@ internal sealed class RagRetrievalPipeline : IRagRetrievalPipeline
         for (var i = 0; i < searchMatches.Count; i++)
         {
             var match = searchMatches[i];
-            var entity = loadedEntities[i];
-            var text = entity is not null ? EntityAi.ExtractText(entity) : $"[Chunk {match.Id}]";
+            var meta = match.Metadata as IReadOnlyDictionary<string, object>;
+
+            // Prefer the stored chunk text + provenance (file-ingested corpora are chunk-precise and
+            // cite-by-file). Fall back to hydrating the source entity for entity-ingested corpora that
+            // carry no stored chunk text (backward-compatible).
+            string text;
+            if (meta is not null && meta.TryGetValue("text", out var storedText) && storedText is string s && !string.IsNullOrEmpty(s))
+            {
+                text = s;
+            }
+            else
+            {
+                var entity = loadedEntities[i];
+                text = entity is not null ? EntityAi.ExtractText(entity) : $"[Chunk {match.Id}]";
+            }
 
             chunks.Add(new RagChunk(
                 ChunkId: match.Id,
                 DocumentId: documentIds[i],
                 Text: text,
-                Score: match.Score));
+                Score: match.Score,
+                SectionTitle: meta is not null && meta.TryGetValue("section", out var sec) ? sec as string : null,
+                Metadata: meta,
+                Provenance: RagChunkProvenance.FromMetadata(meta)));
         }
 
         return chunks;
@@ -388,6 +411,22 @@ internal sealed class RagRetrievalPipeline : IRagRetrievalPipeline
 
         return $"RETRIEVED CONTEXT (use only this to answer):\n\n{context}" +
                $"\n\n---\n\nQUESTION: {query}{citationInstruction}";
+    }
+
+    // Trim the assembled context to roughly a token budget, keeping the highest-scored chunks (which
+    // are first). Uses a ~4 chars/token estimate; always keeps at least the top chunk.
+    private static List<string> TrimToTokenBudget(List<string> parts, int maxTokens)
+    {
+        var result = new List<string>();
+        var tokensUsed = 0;
+        foreach (var part in parts)
+        {
+            var estimate = (part.Length / 4) + 1;
+            if (result.Count > 0 && tokensUsed + estimate > maxTokens) break;
+            result.Add(part);
+            tokensUsed += estimate;
+        }
+        return result;
     }
 
     private static RagRetrievalTrace BuildTrace(

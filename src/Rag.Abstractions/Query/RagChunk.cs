@@ -10,4 +10,5 @@ public sealed record RagChunk(
     double Score,
     string? DocumentTitle = null,
     string? SectionTitle = null,
-    IReadOnlyDictionary<string, object>? Metadata = null);
+    IReadOnlyDictionary<string, object>? Metadata = null,
+    RagChunkProvenance? Provenance = null);

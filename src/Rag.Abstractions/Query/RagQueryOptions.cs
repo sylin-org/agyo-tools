@@ -44,4 +44,23 @@ public sealed record RagQueryOptions
     /// (today's behaviour). An unsupported operator/field fails loud at retrieval, never silently.
     /// </summary>
     public Koan.Data.Abstractions.Filtering.Filter? Filter { get; init; }
+
+    /// <summary>
+    /// Per-query hybrid search alpha override (0 = pure keyword/BM25 … 1 = pure semantic/vector).
+    /// <c>null</c> = use the global <c>RagOptions.HybridAlpha</c> default. Lets a caller tune the
+    /// keyword/semantic blend per query without changing global config.
+    /// </summary>
+    public double? HybridAlpha { get; init; }
+
+    /// <summary>
+    /// Per-query rerank top-N override (how many chunks feed generation / are returned).
+    /// <c>null</c> = use the global <c>RagOptions.RerankTopN</c> default.
+    /// </summary>
+    public int? RerankTopN { get; init; }
+
+    /// <summary>
+    /// Optional token budget for the assembled context window: when set, the retrieved context is
+    /// trimmed (highest-scored chunks first) to roughly this many tokens. <c>null</c> = no budget.
+    /// </summary>
+    public int? MaxContextTokens { get; init; }
 }
