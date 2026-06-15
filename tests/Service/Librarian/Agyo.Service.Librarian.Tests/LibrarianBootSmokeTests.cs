@@ -1,6 +1,8 @@
+using Agyo.Service.Librarian.Models;
 using Agyo.Service.Librarian.Services;
 using AwesomeAssertions;
 using Koan.Core;
+using Koan.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
@@ -73,6 +75,31 @@ public sealed class LibrarianBootSmokeTests
         rsp.GetService<Search>().Should().NotBeNull();
 
         _output.WriteLine($"Hosted services: {string.Join(", ", hosted)}");
+    }
+
+    [Fact]
+    public async Task Project_is_exposed_as_a_readonly_MCP_entity()
+    {
+        await using var scope = await LibrarianHostScope.StartAsync(
+            Agyo.Testing.Integration.AgyoIntegrationHost.Configure()
+                .WithSetting("Koan:Data:DefaultProvider", "inmemory")
+                .WithSetting("Koan:Orchestration:Global", "Disabled")
+                .ConfigureServices(services => services.AddKoan()));
+
+        // The real /mcp transport lists tools from the McpEntityRegistry. Project must be registered
+        // (read-only) so list_projects / project_status / resolve-by-query are genuine MCP tools — not
+        // just the REST get-references surface. (Koan.Mcp tools are entity operations only; the Context7
+        // search/reindex action verbs stay REST — AGYO-0002 P4b.)
+        var registry = scope.Services.GetService<McpEntityRegistry>();
+        registry.Should().NotBeNull("referencing Sylin.Koan.Mcp + AddKoan() registers the MCP entity registry");
+
+        var project = registry!.Registrations.SingleOrDefault(r => r.EntityType == typeof(Project));
+        project.Should().NotBeNull("Project carries [McpEntity], so the transport must list its tools");
+        project!.Tools.Should().NotBeEmpty("a registered MCP entity exposes at least its read operations");
+        project.Tools.Should().NotContain(t => t.IsMutation,
+            "Project is [McpEntity(AllowMutations=false)] — only read tools should be exposed");
+
+        _output.WriteLine($"MCP 'project' tools: {string.Join(", ", project.Tools.Select(t => t.Name))}");
     }
 }
 

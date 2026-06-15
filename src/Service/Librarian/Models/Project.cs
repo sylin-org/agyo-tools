@@ -1,11 +1,23 @@
 using Koan.Data.Abstractions;
 using Koan.Data.Core.Model;
+using Koan.Mcp;
 
 namespace Agyo.Service.Librarian.Models;
 
 /// <summary>
-/// Represents a code project being tracked by Agyo Librarian
+/// Represents a code project being tracked by Agyo Librarian.
 /// </summary>
+/// <remarks>
+/// Exposed read-only over MCP (AGYO-0002 P4b): an agent can list projects, get a project's indexing
+/// status, or query by name/path through the real /mcp transport (project.collection / .get-by-id /
+/// .query). Koan.Mcp tools are entity operations only, so the Context7 <em>action</em> verbs
+/// (get_library_docs semantic search, reindex_project) cannot be MCP tools without an upstream
+/// Koan.Mcp custom-verb capability; they remain on the REST surface (api/mcp/get-references, api/projects).
+/// </remarks>
+[McpEntity(
+    Name = "project",
+    Description = "Registered code/docs projects the Librarian has indexed. Read-only: list projects, get a project's indexing status, or query by name/path.",
+    AllowMutations = false)]
 public class Project : Entity<Project>
 {
     /// <summary>
