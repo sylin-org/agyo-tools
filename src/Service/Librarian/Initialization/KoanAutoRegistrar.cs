@@ -62,7 +62,7 @@ public sealed class KoanAutoRegistrar : IKoanAutoRegistrar
         // Scheduled maintenance task (folded from the former JobMaintenanceTaskRegistration initializer, ARCH-0086).
         services.AddSingleton<Agyo.Scheduling.IScheduledTask, Agyo.Service.Librarian.Tasks.JobMaintenanceTask>();
 
-        services.AddScoped<Koan.Web.Hooks.IModelHook<TagVocabularyEntry>, TagVocabularyHooks>();
+        services.AddScoped<Koan.Web.Hooks.IModelHook<Agyo.Tagging.Tag>, TagVocabularyHooks>();
         services.AddScoped<Koan.Web.Hooks.IModelHook<TagRule>, TagRuleHooks>();
         services.AddScoped<Koan.Web.Hooks.IModelHook<TagPipeline>, TagPipelineHooks>();
         services.AddScoped<Koan.Web.Hooks.IModelHook<SearchPersona>, SearchPersonaHooks>();

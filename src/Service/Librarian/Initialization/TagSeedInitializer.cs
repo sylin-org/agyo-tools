@@ -119,23 +119,28 @@ public sealed class TagSeedInitializer : IHostedService
 
         foreach (var seed in VocabularySeeds)
         {
-            var existing = await TagVocabularyEntry.Query(e => e.Tag == seed.Tag, cancellationToken).ConfigureAwait(false);
-            var normalizedSynonyms = TagEnvelope.NormalizeTags(seed.Synonyms).ToArray();
+            // Canonical vocabulary is Sylin.Agyo.Tagging.Tag (AGYO-0002): Id = canonical, ParentOf = synonyms.
+            var canonical = seed.Tag.Trim().ToLowerInvariant();
+            var normalizedSynonyms = TagEnvelope.NormalizeTags(seed.Synonyms).ToList();
 
-            if (existing.Count == 0)
+            var existing = await Agyo.Tagging.Tag.Get(canonical, cancellationToken).ConfigureAwait(false);
+
+            if (existing is null)
             {
-                var entry = TagVocabularyEntry.Create(seed.Tag, normalizedSynonyms, seed.DisplayName, true);
-                entry.Id = seed.Id;
-                await entry.Save(cancellationToken).ConfigureAwait(false);
+                var tag = new Agyo.Tagging.Tag
+                {
+                    Id = canonical,
+                    DisplayName = seed.DisplayName,
+                    ParentOf = normalizedSynonyms
+                };
+                await tag.Save(cancellationToken).ConfigureAwait(false);
                 created++;
                 continue;
             }
 
-            var current = existing[0];
-            current.DisplayName = seed.DisplayName;
-            current.IsPrimary = true;
-            current.Synonyms = normalizedSynonyms.ToList();
-            await current.Save(cancellationToken).ConfigureAwait(false);
+            existing.DisplayName = seed.DisplayName;
+            existing.ParentOf = normalizedSynonyms;
+            await existing.Save(cancellationToken).ConfigureAwait(false);
             updated++;
         }
 
@@ -378,10 +383,7 @@ public sealed class TagSeedInitializer : IHostedService
         return new TagSeedReport("personas", created, updated);
     }
 
-    private sealed record TagVocabularySeed(string Tag, string DisplayName, IEnumerable<string> Synonyms)
-    {
-        public string Id { get; } = $"tag-vocab::{Tag}";
-    }
+    private sealed record TagVocabularySeed(string Tag, string DisplayName, IEnumerable<string> Synonyms);
 
     private sealed record TagRuleSeed(
         string Id,

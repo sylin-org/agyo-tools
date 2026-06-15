@@ -48,8 +48,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Sibling Agyo library: the scheduled JobMaintenanceTask (was Koan.Scheduling, migrated to agyo) -->
+    <!-- Sibling Agyo libraries -->
+    <!-- Scheduling: the JobMaintenanceTask (was Koan.Scheduling, migrated to agyo). -->
     <ProjectReference Include="..\..\Scheduling\Agyo.Scheduling.csproj" />
+    <!-- Tagging: the canonical tag vocabulary + synonym registry (Agyo.Tagging.Tag). The Librarian's
+         rule/pipeline/envelope tag-inference engine stays local; only the vocabulary converges (AGYO-0002). -->
+    <ProjectReference Include="..\..\Tagging\Agyo.Tagging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

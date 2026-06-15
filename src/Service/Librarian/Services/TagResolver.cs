@@ -248,15 +248,17 @@ public class TagResolver
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30);
 
-            var entries = await TagVocabularyEntry.All(cancellationToken);
+            // Vocabulary/synonym registry is Sylin.Agyo.Tagging.Tag (AGYO-0002 converge): Tag.Id is the
+            // canonical form; Tag.ParentOf is its synonym list. The rule/pipeline/envelope engine here stays local.
+            var entries = await Agyo.Tagging.Tag.All(cancellationToken);
             var synonyms = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var entryItem in entries)
             {
-                var canonical = entryItem.Tag.Trim().ToLowerInvariant();
+                var canonical = entryItem.Id.Trim().ToLowerInvariant();
                 synonyms[canonical] = canonical;
 
-                foreach (var synonym in entryItem.Synonyms)
+                foreach (var synonym in entryItem.ParentOf)
                 {
                     var normalized = synonym.Trim().ToLowerInvariant();
                     if (!string.IsNullOrEmpty(normalized))

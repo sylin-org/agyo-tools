@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
@@ -6,13 +6,16 @@ using Agyo.Service.Librarian.Models;
 using Agyo.Service.Librarian.Infrastructure;
 using Koan.Web.Hooks;
 using Microsoft.Extensions.Caching.Memory;
+using AgyoTag = Agyo.Tagging.Tag;
 
 namespace Agyo.Service.Librarian.Services.Hooks;
 
 /// <summary>
-/// Normalizes and maintains cache for tag vocabulary operations.
+/// Normalizes the canonical tag vocabulary (Sylin.Agyo.Tagging.Tag) on write and keeps the
+/// TagResolver's vocabulary cache coherent. <c>Tag.Id</c> is the canonical form; <c>Tag.ParentOf</c>
+/// is its synonym list (AGYO-0002 converge).
 /// </summary>
-public sealed class TagVocabularyHooks : IModelHook<TagVocabularyEntry>
+public sealed class TagVocabularyHooks : IModelHook<AgyoTag>
 {
     private readonly IMemoryCache _cache;
 
@@ -23,60 +26,53 @@ public sealed class TagVocabularyHooks : IModelHook<TagVocabularyEntry>
 
     public int Order => 0;
 
-    public Task OnBeforeFetch(HookContext<TagVocabularyEntry> ctx, string id)
+    public Task OnBeforeFetch(HookContext<AgyoTag> ctx, string id)
         => Task.CompletedTask;
 
-    public Task OnAfterFetch(HookContext<TagVocabularyEntry> ctx, TagVocabularyEntry? model)
+    public Task OnAfterFetch(HookContext<AgyoTag> ctx, AgyoTag? model)
         => Task.CompletedTask;
 
-    public Task OnBeforeSave(HookContext<TagVocabularyEntry> ctx, TagVocabularyEntry model)
+    public Task OnBeforeSave(HookContext<AgyoTag> ctx, AgyoTag model)
     {
         Normalize(model);
         return Task.CompletedTask;
     }
 
-    public Task OnAfterSave(HookContext<TagVocabularyEntry> ctx, TagVocabularyEntry model)
+    public Task OnAfterSave(HookContext<AgyoTag> ctx, AgyoTag model)
     {
         Invalidate();
         return Task.CompletedTask;
     }
 
-    public Task OnBeforeDelete(HookContext<TagVocabularyEntry> ctx, TagVocabularyEntry model)
+    public Task OnBeforeDelete(HookContext<AgyoTag> ctx, AgyoTag model)
         => Task.CompletedTask;
 
-    public Task OnAfterDelete(HookContext<TagVocabularyEntry> ctx, TagVocabularyEntry model)
+    public Task OnAfterDelete(HookContext<AgyoTag> ctx, AgyoTag model)
     {
         Invalidate();
         return Task.CompletedTask;
     }
 
-    public Task OnBeforePatch(HookContext<TagVocabularyEntry> ctx, string id, object patch)
+    public Task OnBeforePatch(HookContext<AgyoTag> ctx, string id, object patch)
         => Task.CompletedTask;
 
-    public Task OnAfterPatch(HookContext<TagVocabularyEntry> ctx, TagVocabularyEntry model)
+    public Task OnAfterPatch(HookContext<AgyoTag> ctx, AgyoTag model)
     {
         Normalize(model);
         Invalidate();
         return Task.CompletedTask;
     }
 
-    private static void Normalize(TagVocabularyEntry entry)
+    private static void Normalize(AgyoTag tag)
     {
-        if (string.IsNullOrWhiteSpace(entry.Tag))
+        if (string.IsNullOrWhiteSpace(tag.Id))
         {
-            throw new ValidationException("Tag cannot be empty.");
+            throw new ValidationException("Tag id (the canonical form) cannot be empty.");
         }
 
-        entry.Tag = entry.Tag.Trim().ToLowerInvariant();
-        entry.DisplayName = string.IsNullOrWhiteSpace(entry.DisplayName)
-            ? null
-            : entry.DisplayName.Trim();
-        entry.Synonyms = TagEnvelope.NormalizeTags(entry.Synonyms).ToList();
-
-        if (string.IsNullOrWhiteSpace(entry.Id))
-        {
-            entry.Id = $"tag-vocab::{entry.Tag}";
-        }
+        tag.Id = tag.Id.Trim().ToLowerInvariant();
+        tag.DisplayName = string.IsNullOrWhiteSpace(tag.DisplayName) ? null : tag.DisplayName.Trim();
+        tag.ParentOf = TagEnvelope.NormalizeTags(tag.ParentOf).ToList();
     }
 
     private void Invalidate() => _cache.Remove(Constants.CacheKeys.TagVocabulary);

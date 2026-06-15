@@ -92,34 +92,9 @@ public class TagPipeline : Entity<TagPipeline>
     }
 }
 
-/// <summary>
-/// Canonical vocabulary entry with synonyms and metadata.
-/// </summary>
-public class TagVocabularyEntry : Entity<TagVocabularyEntry>
-{
-    public string Tag { get; set; } = "";
-    public string? DisplayName { get; set; }
-    public List<string> Synonyms { get; set; } = new();
-    public bool IsPrimary { get; set; } = true;
-
-    public static TagVocabularyEntry Create(
-        string tag,
-        IEnumerable<string>? synonyms = null,
-        string? displayName = null,
-        bool isPrimary = true)
-    {
-        if (string.IsNullOrWhiteSpace(tag))
-            throw new ArgumentException("Tag cannot be empty", nameof(tag));
-
-        return new TagVocabularyEntry
-        {
-            Tag = tag.Trim().ToLowerInvariant(),
-            DisplayName = displayName,
-            Synonyms = TagEnvelope.NormalizeTags(synonyms).ToList(),
-            IsPrimary = isPrimary
-        };
-    }
-}
+// NOTE: the canonical tag vocabulary + synonym registry was converged onto Sylin.Agyo.Tagging.Tag
+// (AGYO-0002). Tag.Id is the canonical form; Tag.ParentOf is its synonym list. The rule/pipeline/
+// envelope tag-inference engine (TagRule, TagPipeline, TagEnvelope) stays local, below.
 
 /// <summary>
 /// Audit entry persisted on a chunk describing which rule emitted a tag.
