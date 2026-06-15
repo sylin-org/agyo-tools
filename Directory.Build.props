@@ -56,6 +56,12 @@
          FileVersion are computed from version.json (operator-owned major.minor) + git commit
          height. PrivateAssets=all so it never flows to consumers. -->
     <PackageReference Include="Nerdbank.GitVersioning" Version="3.9.50" PrivateAssets="all" />
+    <!-- Koan's registry source-generator: emits a [ModuleInitializer] that pre-registers each
+         project's IKoanAutoRegistrar/KoanModule into KoanRegistry at module-load (the zero-reflection
+         fast-path). Koan's runtime RegistryManifestLoader scan is the fallback that already works for
+         Sylin.Agyo.* packages, but attaching the generator makes discovery boot-order-robust and matches
+         Koan's own repo shape. PrivateAssets=all (analyzer; never flows to consumers). -->
+    <PackageReference Include="Sylin.Koan.Core.Registry.Generators" Version="0.17.0" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
