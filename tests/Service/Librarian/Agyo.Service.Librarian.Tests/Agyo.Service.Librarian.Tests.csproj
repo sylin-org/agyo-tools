@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    ARCH-0079 integration specs for the Agyo.Service.Librarian service (AGYO-0002).
+    Boot-smoke boots a REAL AddKoan() host (genuine reflective discovery of the Librarian's
+    KoanAutoRegistrar) and asserts the service surface composes — the search/indexing pipeline,
+    the IndexProjectAsync MCP delegate, the file-watch hosted services, and the JobMaintenanceTask
+    re-homed onto Agyo.Scheduling. The behavioral index-then-search spec is container-gated
+    (skip-clean) on Weaviate + Ollama via Xunit.SkippableFact + InfraProbe.
+    Inherits tests/Directory.Build.props (TreatWarningsAsErrors, bin/obj redirect, IsPackable=false).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
+  </ItemGroup>
+
+  <!-- Default data provider for the boot-smoke (the service itself defaults to Sqlite). -->
+  <ItemGroup>
+    <PackageReference Include="Sylin.Koan.Data.Connector.InMemory" Version="0.17.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Agyo.Testing\Agyo.Testing.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Service\Librarian\Agyo.Service.Librarian.csproj" />
+  </ItemGroup>
+</Project>
