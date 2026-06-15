@@ -64,8 +64,17 @@ in agyo as `Sylin.Agyo.Rag` (`Rag.Corpus<TEntity>()` → `IRagCorpus<TEntity>`).
   `list_projects` / `project_status` / `reindex_project` were stale aspirational comments in `Program.cs`.
   The only live tool was the REST endpoint `POST /api/mcp/get-references` (a plain `[ApiController]`, not
   wired into the real `/mcp` transport — no entity carries `[McpEntity]`, so the transport listed nothing).
-  **Decision:** the Context7 verbs will be **built** as real Koan.Mcp tools (P4b), so the MCP transport
-  genuinely lists them; `get-references` is preserved.
+  Worse, Koan.Mcp (this version) exposed **entity CRUD operations only** — there was no `[McpTool]`
+  custom-verb mechanism (the MCP guide's `[McpTool]` was itself aspirational), so the action verbs could
+  not be MCP tools at all. **Delivered (P4b):**
+  - `Project` is exposed as a read-only `[McpEntity]`, so the transport lists real read tools.
+  - **Koan.Mcp was extended upstream** with a genuine custom-verb capability: a `[McpTool]` attribute on a
+    static method is discovered, schema-generated, listed, and dispatched over `tools/list` + `tools/call`
+    (both RPC paths), with `IServiceProvider`/`CancellationToken` injection. See the Koan-side commit
+    `feat(mcp): custom-verb [McpTool] tools` + `Koan.Mcp.CustomTools.Tests`.
+  - The Context7 verbs are now **real MCP tools** (`Mcp/ContextTools.cs`), drop-in for a Context7 agent.
+    `get-references` REST is preserved. (`get_library_docs` returns cited chunks once the P4c re-platform
+    closes the vector-write gap; the verb itself is wired + discovered today.)
 
 - **Three live breakages, not two:** (a) the `IndexProject` delegate was referenced everywhere as the
   non-existent type `IndexProjectAsync`; (b) the dangling `Koan.Scheduling` reference; (c) latent
@@ -78,7 +87,7 @@ in agyo as `Sylin.Agyo.Rag` (`Rag.Corpus<TEntity>()` → `IRagCorpus<TEntity>`).
 | Question | Decision |
 |---|---|
 | Re-platform depth | Harvest agnostic ideas **into** Agyo.Rag, then slim Librarian — not a one-way swap. Green re-home first. |
-| MCP surface | **Build** the Context7 verbs as real Koan.Mcp tools (keep `get-references`). |
+| MCP surface | **Build** the Context7 verbs as real Koan.Mcp tools (keep `get-references`). Required extending Koan.Mcp itself with custom-verb `[McpTool]` support (authorized) — done upstream. |
 | Tag layer | **Converge** the vocabulary/synonym registry onto `Sylin.Agyo.Tagging`; keep the rule/pipeline/envelope **inference engine** local. |
 | Scheduling | `JobMaintenanceTask` re-homed onto `Sylin.Agyo.Scheduling` (intra-repo `ProjectReference`). |
 
@@ -97,6 +106,9 @@ resolve.
 - ARCH-0079 **boot-smoke** passes: a real `AddKoan()` host composes the full service surface — the search/
   indexing pipeline, the `IndexProjectAsync` delegate, the file-watch hosted services, and the
   `JobMaintenanceTask` re-homed onto `Agyo.Scheduling`.
+- **MCP tools are real and discovered**: the boot-smoke asserts `Project` is registered as a read-only
+  `[McpEntity]` and that the five Context7 `[McpTool]` verbs are listed by the (newly added) Koan.Mcp
+  custom-tool registry. The Koan.Mcp custom-verb capability has its own green Koan-side spec.
 - The **ingest pipeline runs end to end** against live infra: real Ollama `all-minilm` (384-dim)
   embeddings + automatic per-project Weaviate class provisioning + Discovery → Extraction → Chunker →
   Embedding → Indexer with **0 errors**. A real Librarian bug was fixed in passing: a force re-index of a

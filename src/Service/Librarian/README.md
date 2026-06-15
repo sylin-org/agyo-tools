@@ -9,8 +9,10 @@ first `Agyo.Service.*` tool — re-homed from Koan's `Koan.Service.KoanContext`.
 [AGYO-0002](../../../docs/decisions/AGYO-0002-librarian.md) for the rename/re-home/re-platform decision.
 
 > **Lineage:** Librarian is a local-first take on the Context7 idea (resolve a library, fetch grounded
-> docs). The Context7-compatible MCP verbs are being built as real Koan.Mcp tools so an agent already
-> configured for Context7 is a drop-in; today the live MCP tool is `get-references`.
+> docs). The Context7-compatible verbs (`resolve_library_id`, `get_library_docs`, `list_projects`,
+> `project_status`, `reindex_project`) are exposed as **real Koan.Mcp tools** so an agent already
+> configured for Context7 is a drop-in. (Delivering this required extending Koan.Mcp with a custom-verb
+> `[McpTool]` capability — see AGYO-0002.)
 
 ## What it does
 
@@ -31,9 +33,11 @@ container (host port 27501) via Aspire when a container runtime is present; poin
 Endpoint` at an existing Weaviate to use your own. An Ollama endpoint (default `localhost:11434`, model
 `all-minilm`) provides embeddings.
 
-- **MCP**: `POST /api/mcp/get-references` — semantic code search given a `workingDirectory` + `query`,
-  returning cited chunks. (The Context7 verbs `resolve_library_id` / `get_library_docs` and the project
-  admin verbs are tracked in AGYO-0002 P4b to be exposed through the real `/mcp` transport.)
+- **MCP** (real `/mcp` transport): the Context7-compatible custom tools `list_projects`,
+  `resolve_library_id`, `project_status`, `reindex_project`, `get_library_docs` (`Mcp/ContextTools.cs`),
+  plus the read-only `project.*` entity tools (`Project` `[McpEntity]`). The legacy
+  `POST /api/mcp/get-references` REST endpoint is also preserved. (`get_library_docs` returns cited chunks
+  once the P4c re-platform closes the vector-write gap.)
 - **REST**: `/api/projects`, `/api/search`, `/api/jobs`, `/api/tags`, `/api/tag-rules`,
   `/api/tag-pipelines`, `/api/search-personas`, `/api/settings`, `/api/metrics`, `/api/diagnostics`,
   `/api/stream` (SSE).

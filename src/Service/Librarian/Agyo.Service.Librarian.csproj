@@ -32,13 +32,13 @@
 
   <ItemGroup>
     <!-- Koan public packages (resolved from local-feed; versions per the feed) -->
-    <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
-    <PackageReference Include="Sylin.Koan.Data.Core" Version="0.17.1" />
+    <PackageReference Include="Sylin.Koan.Core" Version="0.17.4" />
+    <PackageReference Include="Sylin.Koan.Data.Core" Version="0.17.2" />
     <PackageReference Include="Sylin.Koan.Data.Connector.Sqlite" Version="0.17.0" />
-    <PackageReference Include="Sylin.Koan.Web" Version="0.17.4" />
+    <PackageReference Include="Sylin.Koan.Web" Version="0.17.6" />
     <PackageReference Include="Sylin.Koan.Web.Sse" Version="0.17.0" />
     <PackageReference Include="Sylin.Koan.Web.Connector.Swagger" Version="0.17.0" />
-    <PackageReference Include="Sylin.Koan.Mcp" Version="0.17.4" />
+    <PackageReference Include="Sylin.Koan.Mcp" Version="0.17.5" />
     <PackageReference Include="Sylin.Koan.AI" Version="0.17.0" />
     <PackageReference Include="Sylin.Koan.AI.Contracts" Version="0.17.0" />
     <PackageReference Include="Sylin.Koan.AI.Connector.Ollama" Version="0.17.0" />
