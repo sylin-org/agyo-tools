@@ -25,6 +25,17 @@ public class TranslationService
         TranslationOptions options,
         CancellationToken ct = default)
     {
+        // Fail fast on caller errors BEFORE any AI call: translating null/empty/whitespace
+        // text is meaningless. Guard options non-null and options.Text non-whitespace so the
+        // later dereferences (length checks, chunking, substring) cannot null-deref (CS8602).
+        ArgumentNullException.ThrowIfNull(options);
+        if (string.IsNullOrWhiteSpace(options.Text))
+        {
+            throw new ArgumentException(
+                "Translation text must not be null, empty, or whitespace.",
+                $"{nameof(options)}.{nameof(options.Text)}");
+        }
+
         // Normalize source language: null/empty/whitespace -> "auto"
         if (string.IsNullOrWhiteSpace(options.SourceLanguage))
         {
@@ -35,7 +46,7 @@ public class TranslationService
             "Translating text to {TargetLanguage} (source: {SourceLanguage}, length: {Length} chars)",
             options.TargetLanguage,
             options.SourceLanguage,
-            options.Text?.Length ?? 0);
+            options.Text.Length);
 
         try
         {

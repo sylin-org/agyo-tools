@@ -3,7 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Description>Opt-in observability baseline for Koan-built applications, expressed as a KoanModule: an ASP.NET Core health-checks baseline plus a resilient named HttpClient ("agyo-observability") for outbound probes. OpenTelemetry is intentionally not wired (advertised but never implemented upstream) — see the TODO in the module.</Description>
+    <Description>Opt-in observability baseline for Koan-built applications, expressed as a KoanModule: real OpenTelemetry (described Resource, ASP.NET Core + HttpClient tracing, ASP.NET Core + HttpClient + Runtime metrics, OTLP exporter that activates only when an endpoint is configured), an ASP.NET Core health-checks baseline, and a resilient named HttpClient ("agyo-observability") for outbound probes. Safe by default — boots with no collector present.</Description>
     <PackageTags>$(CommonPackageTags);observability;health;healthchecks;resilience;httpclient</PackageTags>
   </PropertyGroup>
   <ItemGroup>
@@ -14,6 +14,16 @@
     <!-- Third-party: AddStandardResilienceHandler (standard .NET resilience pipeline). Carried
          verbatim from the original Koan.Recipe.Observability bundle. -->
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Real OpenTelemetry SDK + instrumentation + OTLP exporter (stable, from nuget.org).
+         AddOpenTelemetry() rides Extensions.Hosting; the OTLP exporter is wired only when an
+         endpoint is configured (OtlpOptions) so the host boots with no collector present. -->
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
   </ItemGroup>
   <ItemGroup>
     <!-- Koan PUBLIC packages (Reference = Intent; resolved from agyo local-feed). -->

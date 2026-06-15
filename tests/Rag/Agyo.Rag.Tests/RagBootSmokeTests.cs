@@ -16,11 +16,11 @@ namespace Agyo.Rag.Tests;
 /// resolves — the DI-registered <see cref="IRagService"/> and the static <see cref="Rag"/> facade.
 /// No external AI/Vector backend is required to register; the InMemory data adapter is enough.
 /// <para>
-/// NOTE: this assembly deliberately declares NO <c>[RagCorpus]</c>-decorated entity. The registrar
-/// scans every loaded assembly for <c>[RagCorpus]</c> types and wires lifecycle hooks for each, and
-/// that path currently throws at boot (see <see cref="RagCorpusLifecycleHookRegressionTests"/>).
-/// The convention path (<c>Rag.Corpus&lt;T&gt;()</c> on an undecorated entity) needs no hooks, so
-/// the service surface still boots and resolves cleanly.
+/// This spec uses an undecorated entity via the convention path (<c>Rag.Corpus&lt;T&gt;()</c>), which
+/// needs no lifecycle hooks. The registrar scans every loaded assembly for <c>[RagCorpus]</c> types
+/// and wires lifecycle hooks for each; the end-to-end <c>[RagCorpus]</c> auto-ingest boot is covered
+/// by <see cref="RagCorpusBootTests"/> (post-FlattenHierarchy-fix it boots cleanly — see
+/// <see cref="RagCorpusLifecycleHookRegressionTests"/> for the root cause).
 /// </para>
 /// <para>
 /// Lives in the <c>RagAmbientHost</c> collection (non-parallel) because the static <see cref="Rag"/>
@@ -47,11 +47,13 @@ public sealed class RagBootSmokeTests
     [Fact]
     public async Task AddKoan_resolves_the_RAG_service_surface()
     {
-        await using var host = await Agyo.Testing.Integration.AgyoIntegrationHost.Configure()
-            // Pin the default data provider so RAG's Entity<T> job ledger resolves deterministically.
-            .WithSetting("Koan:Data:DefaultProvider", "inmemory")
-            .ConfigureServices(services => services.AddKoan())
-            .StartAsync();
+        // RagAmbientHostScope resets the ambient AppHost.Current on teardown so sibling ambient-host
+        // specs in this collection never observe this boot's disposed provider (see the scope's docs).
+        await using var host = await RagAmbientHostScope.StartAsync(
+            Agyo.Testing.Integration.AgyoIntegrationHost.Configure()
+                // Pin the default data provider so RAG's Entity<T> job ledger resolves deterministically.
+                .WithSetting("Koan:Data:DefaultProvider", "inmemory")
+                .ConfigureServices(services => services.AddKoan()));
 
         // 1. The capability's primary DI surface is registered via reflective discovery.
         var ragService = host.Services.GetService<IRagService>();

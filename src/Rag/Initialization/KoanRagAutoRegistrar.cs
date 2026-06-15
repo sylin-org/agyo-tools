@@ -181,8 +181,13 @@ public sealed class KoanRagAutoRegistrar : IKoanAutoRegistrar
                 $"Type {entityType.Name} has [RagCorpus] but uses {keyType.Name} keys. " +
                 "RAG requires string keys (Entity<T> or Entity<T, string>).");
 
-        // Get Entity<T>.Events static property
-        var eventsProperty = entityBaseType.GetProperty("Events", BindingFlags.Static | BindingFlags.Public)
+        // Get Entity<T>.Events static property.
+        // FlattenHierarchy is required: Events is declared on Entity<TEntity, TKey> (Entity`2),
+        // but FindEntityBaseType returns the Entity<TEntity> (Entity`1) closed base. Inherited
+        // static members are NOT surfaced without FlattenHierarchy, so omitting it returns null
+        // and aborts AddKoan() for every [RagCorpus]-decorated entity.
+        var eventsProperty = entityBaseType.GetProperty(
+                "Events", BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy)
             ?? throw new InvalidOperationException(
                 $"Entity base type for {entityType.Name} has no static Events property.");
 

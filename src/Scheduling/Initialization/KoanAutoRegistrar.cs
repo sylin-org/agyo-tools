@@ -29,14 +29,19 @@ public sealed class KoanAutoRegistrar : IKoanAutoRegistrar
             });
 
         // Tasks are expected to self-register via Koan.Core IKoanInitializer in their own assemblies.
-        services.AddHostedService<SchedulingOrchestrator>();
+        // SchedulingOrchestrator is a [KoanBackgroundService] KoanFluentServiceBase: Koan's
+        // KoanBackgroundServiceOrchestrator discovers it by attribute and owns its lifecycle. We
+        // register the type as a singleton (so that single owner resolves one shared instance) and
+        // deliberately do NOT also AddHostedService<>() it — doing both ran ExecuteCore twice on two
+        // distinct instances, firing every task twice.
+        services.AddSingleton<SchedulingOrchestrator>();
     }
 
     // Required by IKoanInitializer; minimal registration without bespoke discovery.
     public void Initialize(IServiceCollection services)
     {
         services.AddKoanOptions<SchedulingOptions>(ConfigurationConstants.Section);
-        services.AddHostedService<SchedulingOrchestrator>();
+        services.AddSingleton<SchedulingOrchestrator>();
     }
 
     public void Describe(Koan.Core.Provenance.ProvenanceModuleWriter module, IConfiguration cfg, IHostEnvironment env)

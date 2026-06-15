@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Agyo.Testing.Integration;
 using Agyo.Web.GraphQl;
 using Agyo.Web.GraphQl.Controllers;
 using Agyo.Web.GraphQl.Execution;
@@ -37,15 +38,15 @@ public sealed class GraphQlWidget : Entity<GraphQlWidget>
 }
 
 /// <summary>
-/// One real Koan web host (TestServer) shared by every spec in <see cref="GraphQlIntegrationTests"/>.
+/// One real Koan web host (TestServer) shared by the HTTP-endpoint specs in
+/// <see cref="GraphQlIntegrationTests"/>.
 /// </summary>
 /// <remarks>
-/// A single shared host is deliberate: <c>AddKoanGraphQl()</c> latches a <c>private static bool</c>
-/// guard the first time it runs, so its registration into a DI container happens at most once per
-/// process. Building two separate hosts in the same test process would leave the second container
-/// without <see cref="IGraphQlExecutor"/> (see notes/AGYO finding). The host is built through real
-/// <c>AddKoan()</c> reflective discovery, so the GraphQl <c>KoanModule</c> is found and wired by the
-/// framework — genuine ARCH-0079 composition, not hand-registration.
+/// The host is built through real <c>AddKoan()</c> reflective discovery, so the GraphQl
+/// <c>KoanModule</c> is found and wired by the framework — genuine ARCH-0079 composition, not
+/// hand-registration. A shared <see cref="TestServer"/> keeps the HTTP specs cheap; multi-container
+/// safety is proven independently by <see cref="GraphQlMultiContainerTests"/>, which stands up two
+/// separate containers in this same process.
 /// </remarks>
 public sealed class GraphQlHostFixture : IAsyncLifetime
 {
@@ -64,7 +65,8 @@ public sealed class GraphQlHostFixture : IAsyncLifetime
                {
                    // Real reflective discovery: AddKoan() finds the InMemory adapter + the GraphQl
                    // KoanModule, which itself calls AddKoanGraphQl(). The explicit AddKoanGraphQl()
-                   // call is belt-and-suspenders for the controller wiring and is idempotent.
+                   // call is belt-and-suspenders for the controller wiring and is idempotent
+                   // per IServiceCollection.
                    s.AddKoan();
                    s.AddKoanGraphQl();
                    s.AddControllers().AddApplicationPart(typeof(GraphQlController).Assembly);
@@ -97,7 +99,8 @@ public sealed class GraphQlHostFixture : IAsyncLifetime
 /// ARCH-0079 integration specs for the <c>Agyo.Web.GraphQl</c> capability, exercised over a real
 /// <c>AddKoan()</c>-discovered web host. The boot-smoke spec proves the <c>KoanGraphQlModule</c> is
 /// found by reflective discovery and stands up its primary surface (<see cref="IGraphQlExecutor"/> +
-/// the HotChocolate schema); the behavioral spec proves an entity round-trips over the HTTP endpoint.
+/// the HotChocolate schema); the behavioral specs prove an entity round-trips over the HTTP endpoint,
+/// including the <c>totalCount</c> field whose <c>long</c> count is projected to the GraphQL Int.
 /// </summary>
 public sealed class GraphQlIntegrationTests : IClassFixture<GraphQlHostFixture>
 {
@@ -147,8 +150,6 @@ public sealed class GraphQlIntegrationTests : IClassFixture<GraphQlHostFixture>
         saved.Id.Should().NotBeNullOrWhiteSpace("Entity<T>.Save() assigns a GUID v7 id");
 
         var client = _fixture.Server.CreateClient();
-        // Only 'items' is requested: the 'totalCount' field has a known long->int cast quirk on the
-        // InMemory adapter (see notes), unrelated to the entity-round-trip behavior under test.
         var query = "{ graphQlWidgets { items { id name } } }";
         var response = await client.PostAsJsonAsync("/graphql", new { query });
 
@@ -178,5 +179,129 @@ public sealed class GraphQlIntegrationTests : IClassFixture<GraphQlHostFixture>
         }
 
         found.Should().BeTrue($"the seeded entity '{marker}' must appear in data.graphQlWidgets.items");
+    }
+
+    /// <summary>
+    /// BEHAVIORAL (totalCount): seed one <see cref="GraphQlWidget"/> row, then POST a collection query
+    /// that requests <c>totalCount</c> alongside <c>items</c>. The collection payload's
+    /// <c>TotalCount</c> is a <see cref="long"/>; the GraphQL Int resolver must project it without an
+    /// <see cref="InvalidCastException"/> (the boxed-long unbox bug). The query must execute without
+    /// GraphQL errors and report a count that covers the seeded rows.
+    /// </summary>
+    [Fact]
+    public async Task Post_collection_query_with_totalCount_returns_count_without_cast_error()
+    {
+        var marker = "widget-" + Guid.NewGuid().ToString("N");
+
+        var widget = new GraphQlWidget { Name = marker };
+        var saved = await widget.Save();
+        saved.Id.Should().NotBeNullOrWhiteSpace("Entity<T>.Save() assigns a GUID v7 id");
+
+        var client = _fixture.Server.CreateClient();
+        var query = "{ graphQlWidgets { totalCount items { id name } } }";
+        var response = await client.PostAsJsonAsync("/graphql", new { query });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var json = await response.Content.ReadAsStringAsync();
+        _output.WriteLine(json);
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        // Before the fix, the long->int unbox threw InvalidCastException and surfaced here as a
+        // GraphQL error on the totalCount field; after the fix the query is error-free.
+        root.TryGetProperty("errors", out _).Should().BeFalse(
+            "requesting totalCount must not throw InvalidCastException projecting the long count to the GraphQL Int");
+
+        var collection = root.GetProperty("data").GetProperty("graphQlWidgets");
+
+        var items = collection.GetProperty("items");
+        items.GetArrayLength().Should().BeGreaterThan(0, "the seeded widget must be returned");
+
+        var totalCount = collection.GetProperty("totalCount");
+        totalCount.ValueKind.Should().Be(JsonValueKind.Number, "totalCount projects the long count to a GraphQL Int");
+        totalCount.GetInt32().Should().BeGreaterThanOrEqualTo(items.GetArrayLength(),
+            "the reported total count must cover at least the rows returned in this page");
+        totalCount.GetInt32().Should().BeGreaterThan(0, "at least the seeded widget is counted");
+    }
+}
+
+/// <summary>
+/// MULTI-CONTAINER SAFETY: <c>AddKoanGraphQl()</c> must register independently into every
+/// <see cref="IServiceCollection"/> in the same process. The capability previously latched a
+/// <c>private static bool</c> guard, so the second container in a process silently skipped
+/// registration and never wired <see cref="IGraphQlExecutor"/>. These specs stand up two fully
+/// independent <see cref="AgyoIntegrationHost"/> containers (each its own <c>AddKoan()</c> +
+/// <c>AddKoanGraphQl()</c>) and assert GraphQl wires in BOTH — they would fail with the process-global
+/// static.
+/// </summary>
+public sealed class GraphQlMultiContainerTests
+{
+    private readonly ITestOutputHelper _output;
+
+    public GraphQlMultiContainerTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
+    private static Task<IntegrationHost> BuildHostAsync() =>
+        AgyoIntegrationHost.Configure()
+            .ConfigureServices(services =>
+            {
+                services.AddKoan();
+                services.AddKoanGraphQl();
+            })
+            .StartAsync();
+
+    /// <summary>
+    /// Two independent containers in one process must BOTH resolve <see cref="IGraphQlExecutor"/> and
+    /// produce a valid schema. With the former process-global static, the second container's
+    /// <c>AddKoanGraphQl()</c> would no-op and <c>GetRequiredService&lt;IGraphQlExecutor&gt;()</c> would
+    /// throw — the exact failure this spec guards against.
+    /// </summary>
+    [Fact]
+    public async Task Two_independent_containers_each_wire_graphql_executor_and_schema()
+    {
+        await using var first = await BuildHostAsync();
+        await using var second = await BuildHostAsync();
+
+        first.Services.Should().NotBeSameAs(second.Services, "each host owns an independent DI container");
+
+        foreach (var (host, label) in new[] { (first, "first"), (second, "second") })
+        {
+            var executor = host.Services.GetRequiredService<IGraphQlExecutor>();
+            executor.Should().NotBeNull(
+                $"AddKoanGraphQl must register IGraphQlExecutor into the {label} container independently");
+
+            var sdl = await executor.GetSdl(CancellationToken.None);
+            _output.WriteLine($"[{label}] {sdl}");
+            sdl.Should().NotBeNullOrWhiteSpace($"the {label} container must stand up a valid HotChocolate schema");
+            sdl.Should().Contain("type Query", $"the {label} container's schema exposes a Query root type");
+            sdl.Should().Contain("entities", $"the {label} container's schema exposes the discovery field");
+        }
+    }
+
+    /// <summary>
+    /// Calling <c>AddKoanGraphQl()</c> twice on the SAME <see cref="IServiceCollection"/> must be
+    /// idempotent: the marker-based guard registers exactly once, so the container still resolves a
+    /// single working executor (no duplicate-registration faults).
+    /// </summary>
+    [Fact]
+    public async Task Repeated_registration_on_same_collection_is_idempotent()
+    {
+        await using var host = await AgyoIntegrationHost.Configure()
+            .ConfigureServices(services =>
+            {
+                services.AddKoan();
+                services.AddKoanGraphQl();
+                services.AddKoanGraphQl();
+                services.AddKoanGraphQl();
+            })
+            .StartAsync();
+
+        var executor = host.Services.GetRequiredService<IGraphQlExecutor>();
+        var sdl = await executor.GetSdl(CancellationToken.None);
+        sdl.Should().Contain("type Query", "repeated registration on one collection stays a single valid schema");
     }
 }

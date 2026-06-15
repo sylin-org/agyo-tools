@@ -8,5 +8,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Sylin.Koan.Core" Version="0.17.3" />
+    <!-- Cron parsing/next-occurrence for ICronScheduled tasks. Same library Koan.Jobs uses
+         (Cronos by HangfireIO). Supports 6-field expressions with seconds via CronFormat.IncludeSeconds. -->
+    <PackageReference Include="Cronos" Version="0.13.0" />
   </ItemGroup>
 </Project>

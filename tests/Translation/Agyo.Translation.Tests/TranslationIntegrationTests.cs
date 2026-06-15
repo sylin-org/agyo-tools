@@ -72,6 +72,59 @@ public sealed class TranslationIntegrationTests
     }
 
     /// <summary>
+    /// GUARD (no AI required): the translate path must fail fast on caller errors — null, empty,
+    /// or whitespace <see cref="TranslationOptions.Text"/> — by throwing <see cref="ArgumentException"/>
+    /// BEFORE any chat provider is touched. Runs unconditionally (plain [Fact]); needs no Ollama
+    /// because the guard validates input at method entry, ahead of every AI call.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t\n")]
+    public async Task Translate_With_Null_Or_Blank_Text_Throws_ArgumentException(string? text)
+    {
+        await using var host = await AgyoIntegrationHost.Configure()
+            .ConfigureServices(services => services.AddKoan())
+            .StartAsync();
+
+        var service = host.Services.GetRequiredService<TranslationService>();
+
+        var options = new TranslationOptions
+        {
+            Text = text!,
+            TargetLanguage = "es",
+            SourceLanguage = "en"
+        };
+
+        // ArgumentNullException derives from ArgumentException, so this also covers the
+        // null-options contract; the blank-text cases throw ArgumentException directly.
+        await FluentActions
+            .Awaiting(() => service.Translate(options))
+            .Should().ThrowAsync<ArgumentException>(
+                "null/empty/whitespace Text is a caller error that must fail fast before any AI call");
+    }
+
+    /// <summary>
+    /// GUARD (no AI required): a null <see cref="TranslationOptions"/> argument must throw
+    /// <see cref="ArgumentNullException"/> at method entry, before any chat provider is touched.
+    /// </summary>
+    [Fact]
+    public async Task Translate_With_Null_Options_Throws_ArgumentNullException()
+    {
+        await using var host = await AgyoIntegrationHost.Configure()
+            .ConfigureServices(services => services.AddKoan())
+            .StartAsync();
+
+        var service = host.Services.GetRequiredService<TranslationService>();
+
+        await FluentActions
+            .Awaiting(() => service.Translate(null!))
+            .Should().ThrowAsync<ArgumentNullException>(
+                "a null options argument is a caller error that must fail fast before any AI call");
+    }
+
+    /// <summary>
     /// BEHAVIORAL: configure the Koan AI Ollama endpoint from AGYO_OLLAMA_ENDPOINT, then call the
     /// static <see cref="Translation.Translate(string, string, string, string?, System.Threading.CancellationToken)"/>
     /// facade (which resolves the live TranslationService from AppHost.Current) and assert a

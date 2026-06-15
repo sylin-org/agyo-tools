@@ -36,11 +36,11 @@ public sealed class RagIngestQueryBehavioralTests
 
     /// <summary>
     /// A tiny corpus entity. Its [Embedding] body is what the pipeline embeds + retrieves.
-    /// Deliberately NOT [RagCorpus]-decorated: the registrar scans the whole assembly for
-    /// [RagCorpus] types and wires lifecycle hooks for each, and that path currently throws at
-    /// boot (see RagCorpusLifecycleHookRegressionTests). The convention path used here
-    /// (Rag.Corpus&lt;Fact&gt;().Ingest/Ask) needs no hooks. [Embedding] is class-level and does
-    /// NOT trigger that discovery — it only names the embeddable property for EntityAi.ExtractText.
+    /// Intentionally NOT [RagCorpus]-decorated: this spec exercises the convention path
+    /// (Rag.Corpus&lt;Fact&gt;().Ingest/Ask), which needs no lifecycle hooks. [Embedding] is
+    /// class-level and does NOT trigger [RagCorpus] discovery — it only names the embeddable
+    /// property for EntityAi.ExtractText. (The [RagCorpus] auto-ingest boot path is covered by
+    /// RagCorpusBootTests; it boots cleanly post-FlattenHierarchy-fix.)
     /// </summary>
     [Embedding(Properties = new[] { nameof(Body) })]
     private sealed class Fact : Entity<Fact>
@@ -72,9 +72,10 @@ public sealed class RagIngestQueryBehavioralTests
                 .WithSetting("Koan:Data:Qdrant:Endpoint", qdrant);
         }
 
-        await using var host = await builder
-            .ConfigureServices(services => services.AddKoan())
-            .StartAsync();
+        // RagAmbientHostScope resets the ambient AppHost.Current on teardown so this boot (when live
+        // infra is present) doesn't leave a disposed provider behind for sibling ambient-host specs.
+        await using var host = await RagAmbientHostScope.StartAsync(
+            builder.ConfigureServices(services => services.AddKoan()));
 
         var corpus = Rag.Corpus<Fact>();
         corpus.Should().NotBeNull();

@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 using Agyo.Observability;
 using Agyo.Testing.Integration;
 using Xunit;
@@ -18,9 +20,10 @@ namespace Agyo.Observability.Tests;
 /// <see cref="Microsoft.Extensions.Hosting.IHost"/> through <see cref="AgyoIntegrationHost"/> with
 /// <c>services.AddKoan()</c>, so the <see cref="ObservabilityModule"/> (a <c>KoanModule</c>) is
 /// discovered + run by the framework's reflective bootstrap — not hand-registered here. The
-/// assertions target the two surfaces the module's <c>Register()</c> establishes:
-/// the ASP.NET Core <see cref="HealthCheckService"/> and the resilient named
-/// <see cref="HttpClient"/> (<c>"agyo-observability"</c>).
+/// assertions target the surfaces the module's <c>Register()</c> establishes:
+/// the ASP.NET Core <see cref="HealthCheckService"/>, the resilient named
+/// <see cref="HttpClient"/> (<c>"agyo-observability"</c>), and the real OpenTelemetry providers
+/// (<see cref="TracerProvider"/> + <see cref="MeterProvider"/>).
 /// </summary>
 public sealed class ObservabilityModuleIntegrationTests
 {
@@ -99,5 +102,36 @@ public sealed class ObservabilityModuleIntegrationTests
         _output.WriteLine(
             $"Named client '{ObservabilityModule.HttpClientName}' configured with " +
             $"{named.HttpMessageHandlerBuilderActions.Count} handler-builder action(s)");
+    }
+
+    /// <summary>
+    /// BOOT-SMOKE (mandatory ARCH-0079): a real <c>AddKoan()</c> boot must wire the OpenTelemetry
+    /// SDK the module registers via <c>AddOpenTelemetry()</c>. Resolving both the
+    /// <see cref="TracerProvider"/> and the <see cref="MeterProvider"/> from DI proves the OTel
+    /// registration ran through genuine reflective discovery of the <see cref="ObservabilityModule"/>
+    /// (nothing in this test wires OTel by hand). No OTLP endpoint is configured, so this also
+    /// proves the safe default: OTel registers + resolves cleanly with no collector present.
+    /// </summary>
+    [Fact]
+    public async Task AddKoan_wires_the_opentelemetry_tracer_and_meter_providers()
+    {
+        await using var host = await AgyoIntegrationHost.Configure()
+            .ConfigureServices(services => services.AddKoan())
+            .StartAsync();
+
+        var tracerProvider = host.Services.GetService<TracerProvider>();
+        var meterProvider = host.Services.GetService<MeterProvider>();
+
+        tracerProvider.Should().NotBeNull(
+            "the ObservabilityModule's Register() calls AddOpenTelemetry().WithTracing(...), so the " +
+            "real AddKoan() reflective discovery must have registered a TracerProvider");
+
+        meterProvider.Should().NotBeNull(
+            "the ObservabilityModule's Register() calls AddOpenTelemetry().WithMetrics(...), so the " +
+            "real AddKoan() reflective discovery must have registered a MeterProvider");
+
+        _output.WriteLine(
+            $"OTel providers resolved: {tracerProvider!.GetType().FullName} / " +
+            $"{meterProvider!.GetType().FullName}");
     }
 }

@@ -30,12 +30,18 @@ namespace Agyo.Web.GraphQl;
 
 public static class AddKoanGraphQlExtensions
 {
-    private static bool _registered;
+    // Per-IServiceCollection idempotency marker. A process-global static would make registration
+    // unsafe across multiple DI containers in one process: the second container (or a second
+    // AddKoan() in the same process) would skip registration entirely and GraphQl would silently
+    // fail to wire. A sentinel service in `services` scopes the guard to each collection, so every
+    // container registers independently and exactly once.
+    private sealed class GraphQlRegistrationMarker { }
 
     public static IServiceCollection AddKoanGraphQl(this IServiceCollection services)
     {
-        if (_registered) return services;
-        _registered = true;
+        // Idempotent per IServiceCollection: bail only if THIS collection already ran registration.
+        if (services.Any(d => d.ServiceType == typeof(GraphQlRegistrationMarker))) return services;
+        services.AddSingleton<GraphQlRegistrationMarker>();
 
         services.AddHttpContextAccessor();
         services.AddSingleton<Execution.IGraphQlExecutor, Execution.GraphQlExecutor>();
@@ -160,7 +166,11 @@ public static class AddKoanGraphQlExtensions
                         .Resolve(ctx =>
                         {
                             var parent = ctx.Parent<object?>();
-                            return parent is null ? 0 : (int)(totalProp.GetValue(parent) ?? 0);
+                            // TotalCount is a long on CollectionPayload<T>; GetValue boxes it as a long.
+                            // A direct (int) unbox throws InvalidCastException (you can only unbox to the
+                            // exact boxed type). Convert.ToInt32 unboxes via IConvertible and narrows safely.
+                            var raw = parent is null ? null : totalProp.GetValue(parent);
+                            return raw is null ? 0 : Convert.ToInt32(raw);
                         });
         }));
 
