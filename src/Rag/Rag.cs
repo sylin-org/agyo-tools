@@ -109,4 +109,26 @@ public static class Rag
     /// <summary>Discover with custom include/exclude globs and filters.</summary>
     public static IEnumerable<string> Discover(string repoRoot, RepoDiscoveryOptions options)
         => Content.Discovery.RepoDiscovery.Enumerate(repoRoot, options);
+
+    // ── Incremental Ingest (opt-in file-watch) ──────────────────────────
+
+    /// <summary>
+    /// Watch a repository root and re-ingest changed files into <c>Corpus&lt;TEntity&gt;()</c> as they change
+    /// (debounced, gitignore-aware) — keeps a long-running consumer's index fresh without a bespoke monitor.
+    /// Returns a started watcher; dispose it to stop.
+    /// <para><c>using var watch = Rag.Watch&lt;Doc&gt;(repoRoot);</c></para>
+    /// </summary>
+    public static RagFileWatcher Watch<TEntity>(
+        string repoRoot,
+        RagFileWatcherOptions? options = null,
+        Action<Exception>? onError = null) where TEntity : class, IEntity<string>
+    {
+        var watcher = new RagFileWatcher(
+            repoRoot,
+            options ?? new RagFileWatcherOptions(),
+            (paths, ct) => Corpus<TEntity>().Ingest(paths, progress: null, ct),
+            onError);
+        watcher.Start();
+        return watcher;
+    }
 }

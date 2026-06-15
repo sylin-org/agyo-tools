@@ -29,6 +29,24 @@ internal static class RepoDiscovery
         return EnumerateCore(repoRoot, options, includeExts, includeNamePrefixes, excludeExts, excludeDirs, gitignoreSubstrings);
     }
 
+    /// <summary>
+    /// True when a single (absolute) <paramref name="path"/> under <paramref name="repoRoot"/> would be
+    /// included by discovery. Used by the file-watch incremental ingester so a change event is filtered by
+    /// exactly the same include/exclude/gitignore rules as a full <see cref="Enumerate"/> sweep.
+    /// </summary>
+    public static bool IsMatch(string repoRoot, string path, RepoDiscoveryOptions options)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(repoRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentNullException.ThrowIfNull(options);
+
+        return Matches(
+            repoRoot, path, options,
+            ExtensionsFrom(options.IncludeGlobs), NamePrefixesFrom(options.IncludeGlobs),
+            ExtensionsFrom(options.ExcludeGlobs), DirectoriesFrom(options.ExcludeGlobs),
+            options.RespectGitignore ? ReadGitignore(repoRoot) : []);
+    }
+
     private static IEnumerable<string> EnumerateCore(
         string repoRoot, RepoDiscoveryOptions options,
         HashSet<string> includeExts, List<string> includeNamePrefixes,
@@ -36,27 +54,35 @@ internal static class RepoDiscovery
     {
         foreach (var path in SafeEnumerate(repoRoot))
         {
-            var relative = Path.GetRelativePath(repoRoot, path).Replace('\\', '/');
-            var segments = relative.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-            // Directory excludes (any path segment except the file name).
-            if (segments.Length > 1 && segments[..^1].Any(seg => excludeDirs.Contains(seg))) continue;
-
-            var ext = Path.GetExtension(path);
-            if (ext.Length > 0 && excludeExts.Contains(ext)) continue;
-
-            if (gitignore.Count > 0 && gitignore.Any(g => relative.Contains(g, StringComparison.OrdinalIgnoreCase))) continue;
-
-            var name = Path.GetFileName(path);
-            var included =
-                (ext.Length > 0 && includeExts.Contains(ext)) ||
-                includeNamePrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-            if (!included) continue;
-
-            if (!PassesFileFilters(path, options)) continue;
-
-            yield return path;
+            if (Matches(repoRoot, path, options, includeExts, includeNamePrefixes, excludeExts, excludeDirs, gitignore))
+                yield return path;
         }
+    }
+
+    // The single-path include decision shared by Enumerate (full sweep) and IsMatch (one change event).
+    private static bool Matches(
+        string repoRoot, string path, RepoDiscoveryOptions options,
+        HashSet<string> includeExts, List<string> includeNamePrefixes,
+        HashSet<string> excludeExts, HashSet<string> excludeDirs, IReadOnlyList<string> gitignore)
+    {
+        var relative = Path.GetRelativePath(repoRoot, path).Replace('\\', '/');
+        var segments = relative.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        // Directory excludes (any path segment except the file name).
+        if (segments.Length > 1 && segments[..^1].Any(seg => excludeDirs.Contains(seg))) return false;
+
+        var ext = Path.GetExtension(path);
+        if (ext.Length > 0 && excludeExts.Contains(ext)) return false;
+
+        if (gitignore.Count > 0 && gitignore.Any(g => relative.Contains(g, StringComparison.OrdinalIgnoreCase))) return false;
+
+        var name = Path.GetFileName(path);
+        var included =
+            (ext.Length > 0 && includeExts.Contains(ext)) ||
+            includeNamePrefixes.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        if (!included) return false;
+
+        return PassesFileFilters(path, options);
     }
 
     private static IEnumerable<string> SafeEnumerate(string root)
