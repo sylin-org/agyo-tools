@@ -16,12 +16,11 @@ namespace Agyo.Service.Librarian.Tests;
 /// (<c>AGYO_WEAVIATE_ENDPOINT</c>) and an Ollama endpoint (<c>AGYO_OLLAMA_ENDPOINT</c>, with the
 /// <c>all-minilm</c> embedding model pulled). Absent either, it reports skipped.
 /// <para>
-/// Exercises Discovery → Extraction → Chunker → Embedding (live Ollama) → Indexer end to end and
-/// asserts chunks are produced with no errors. The retrieval half (the async ChunkVectorState →
-/// VectorSyncWorker → Weaviate write, then ISearchService hybrid search) is verified opportunistically
-/// and LOGGED, not asserted: the bespoke async-outbox write path has a known persistence gap and is
-/// the primary target of the AGYO-0002 P4 re-platform onto Agyo.Rag (which writes vectors inline). See
-/// the ADR for the verified-vs-pending breakdown.
+/// Exercises the full re-platformed path end to end (AGYO-0003): Discovery → Agyo.Rag ingest (live Ollama
+/// embeddings + inline Weaviate writes) → ISearchService hybrid search, and ASSERTS the cited round-trip —
+/// the search returns the real stored chunk text (not the hydration placeholder) with file provenance.
+/// Because Rag writes vectors inline at ingest and the Weaviate connector now returns stored metadata on
+/// search, the bespoke async-outbox persistence gap is closed; the retrieval half is asserted, not logged.
 /// </para>
 /// </summary>
 [Collection("LibrarianAmbientHost")]
@@ -63,6 +62,8 @@ public sealed class LibrarianIndexSearchBehavioralTests
                     // otherwise dev-only). The embedding model is all-minilm (384-dim).
                     .WithSetting("Koan:Ai:AllowDiscoveryInNonDev", "true")
                     .WithSetting("Koan:Ai:Ollama:Urls:0", ollama)
+                    // Route the Embed category to the 384-dim model (Rag's pipeline uses the default embed model).
+                    .WithSetting("Koan:Ai:Embed:Model", "all-minilm")
                     .ConfigureServices(services => services.AddKoan()));
 
             var project = Project.Create("sample", repoDir);
@@ -84,10 +85,10 @@ public sealed class LibrarianIndexSearchBehavioralTests
             result.FilesProcessed.Should().BeGreaterThan(0, "Discovery should find the markdown file");
             result.ChunksCreated.Should().BeGreaterThan(0, "the markdown file should produce at least one chunk");
 
-            // OPPORTUNISTIC (logged, not asserted): the retrieval half rides the async ChunkVectorState →
-            // VectorSyncWorker → Weaviate write, which has a known persistence gap in the bespoke path
-            // (AGYO-0002 P4 re-platforms this onto Agyo.Rag's inline writes). Probe + log so the round-trip
-            // is observable once that path is fixed, without failing the verified ingest assertions above.
+            // ASSERTED (AGYO-0003): the retrieval half now rides Agyo.Rag's INLINE vector writes — a chunk is
+            // searchable the moment Ingest returns (no async-outbox lag), and the Weaviate connector returns the
+            // stored chunk text + provenance on search (Koan-side fix), so the cited result is the REAL chunk,
+            // not the hydration placeholder. The short retry only absorbs Weaviate's index-visibility latency.
             SearchResult? hit = null;
             var deadline = DateTime.UtcNow.AddSeconds(30);
             while (DateTime.UtcNow < deadline)
@@ -98,9 +99,18 @@ public sealed class LibrarianIndexSearchBehavioralTests
                 if (sr.Chunks.Count > 0) { hit = sr; break; }
                 await Task.Delay(2000);
             }
-            _output.WriteLine(hit is null
-                ? "Search round-trip: no results yet (known bespoke vector-sync gap; tracked for P4 Rag re-platform)."
-                : $"Search round-trip: HIT — {hit.Chunks[0].Text}");
+
+            hit.Should().NotBeNull("index→search must round-trip — Rag writes vectors inline at ingest");
+            _output.WriteLine($"Search round-trip: HIT — {hit!.Chunks[0].Text}");
+
+            var topChunk = hit.Chunks[0];
+            topChunk.Text.Should().NotStartWith("[Chunk ",
+                "the Weaviate connector must return the stored chunk text, not the entity-hydration placeholder");
+            topChunk.Text.Should().Contain("bearer tokens",
+                "the cited chunk must carry the real source content indexed from README.md");
+            hit.Sources.Files.Should().Contain(
+                f => f.FilePath.EndsWith("README.md", StringComparison.OrdinalIgnoreCase),
+                "the cited result must carry file provenance (cite-by-file)");
         }
         finally
         {

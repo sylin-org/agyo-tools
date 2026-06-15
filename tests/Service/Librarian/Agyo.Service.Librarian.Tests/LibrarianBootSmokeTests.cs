@@ -52,9 +52,13 @@ public sealed class LibrarianBootSmokeTests
         // 2. Hosted services wired via reflective discovery (the start above already ran them).
         var hosted = sp.GetServices<IHostedService>().Select(h => h.GetType().Name).ToList();
         hosted.Should().Contain("FileMonitoringService");
-        hosted.Should().Contain("VectorSyncWorker");
+        hosted.Should().Contain("RagIngestionWorker",
+            "ingest is re-platformed onto Rag's durable worker; the bespoke VectorSyncWorker outbox is retired (AGYO-0003)");
         hosted.Should().Contain("IndexingResumptionWorker");
         hosted.Should().Contain("TagSeedInitializer");
+
+        // AGYO-0003: search + indexing are served by the Rag re-platform.
+        sp.GetService<RagIndexService>().Should().NotBeNull();
 
         // 3. The maintenance task that depended on the (removed) Koan.Scheduling now rides
         //    Agyo.Scheduling and is discovered as an IScheduledTask.
@@ -100,6 +104,34 @@ public sealed class LibrarianBootSmokeTests
             "Project is [McpEntity(AllowMutations=false)] — only read tools should be exposed");
 
         _output.WriteLine($"MCP 'project' tools: {string.Join(", ", project.Tools.Select(t => t.Name))}");
+    }
+
+    [Fact]
+    public async Task Context7_verbs_are_exposed_as_custom_MCP_tools()
+    {
+        await using var scope = await LibrarianHostScope.StartAsync(
+            Agyo.Testing.Integration.AgyoIntegrationHost.Configure()
+                .WithSetting("Koan:Data:DefaultProvider", "inmemory")
+                .WithSetting("Koan:Orchestration:Global", "Disabled")
+                .ConfigureServices(services => services.AddKoan()));
+
+        // The Context7 verbs are real Koan.Mcp custom [McpTool] tools (AGYO-0002 P4b) — the transport
+        // lists them via the custom-tool registry, not just the REST get-references surface.
+        var customTools = scope.Services.GetService<Koan.Mcp.CustomTools.McpCustomToolRegistry>();
+        customTools.Should().NotBeNull("the expanded Koan.Mcp registers the custom-tool registry");
+
+        var names = customTools!.Tools.Select(t => t.Name).ToList();
+        names.Should().Contain(
+            new[] { "list_projects", "resolve_library_id", "project_status", "reindex_project", "get_library_docs" },
+            "the Context7-compatible verbs are exposed as custom MCP tools");
+
+        customTools.TryGet("reindex_project", out var reindex).Should().BeTrue();
+        reindex.IsMutation.Should().BeTrue("reindex_project mutates state");
+
+        customTools.TryGet("get_library_docs", out var docs).Should().BeTrue();
+        ((Newtonsoft.Json.Linq.JObject)docs.InputSchema["properties"]!)["libraryId"].Should().NotBeNull();
+
+        _output.WriteLine($"Custom MCP tools: {string.Join(", ", names)}");
     }
 }
 

@@ -38,12 +38,12 @@
     <PackageReference Include="Sylin.Koan.Web" Version="0.17.6" />
     <PackageReference Include="Sylin.Koan.Web.Sse" Version="0.17.0" />
     <PackageReference Include="Sylin.Koan.Web.Connector.Swagger" Version="0.17.0" />
-    <PackageReference Include="Sylin.Koan.Mcp" Version="0.17.5" />
+    <PackageReference Include="Sylin.Koan.Mcp" Version="0.17.6" />
     <PackageReference Include="Sylin.Koan.AI" Version="0.17.0" />
     <PackageReference Include="Sylin.Koan.AI.Contracts" Version="0.17.0" />
     <PackageReference Include="Sylin.Koan.AI.Connector.Ollama" Version="0.17.0" />
     <PackageReference Include="Sylin.Koan.Data.Vector" Version="0.17.0" />
-    <PackageReference Include="Sylin.Koan.Data.Vector.Connector.Weaviate" Version="0.17.0" />
+    <PackageReference Include="Sylin.Koan.Data.Vector.Connector.Weaviate" Version="0.17.1" />
     <PackageReference Include="Sylin.Koan.Orchestration.Aspire" Version="0.17.2" />
   </ItemGroup>
 
@@ -54,6 +54,9 @@
     <!-- Tagging: the canonical tag vocabulary + synonym registry (Agyo.Tagging.Tag). The Librarian's
          rule/pipeline/envelope tag-inference engine stays local; only the vocabulary converges (AGYO-0002). -->
     <ProjectReference Include="..\..\Tagging\Agyo.Tagging.csproj" />
+    <!-- Rag: the retrieval substrate (AGYO-0003). The Librarian's ingest + search re-platform onto
+         Rag.Corpus (inline vector writes + chunk provenance); the bespoke chunk/embed/index/outbox is dropped. -->
+    <ProjectReference Include="..\..\Rag\Agyo.Rag.csproj" />
   </ItemGroup>
 
   <ItemGroup>

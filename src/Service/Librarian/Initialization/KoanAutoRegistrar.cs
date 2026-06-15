@@ -57,7 +57,8 @@ public sealed class KoanAutoRegistrar : IKoanAutoRegistrar
         // Register background services
         services.AddSingleton<TagSeedInitializer>();
         services.AddHostedService(sp => sp.GetRequiredService<TagSeedInitializer>());
-        services.AddHostedService<VectorSyncWorker>();
+        // VectorSyncWorker (the bespoke async vector outbox) is retired: AGYO-0003 re-platforms ingest
+        // onto Rag.Corpus, which writes vectors inline (closing the async-outbox search gap).
 
         // Scheduled maintenance task (folded from the former JobMaintenanceTaskRegistration initializer, ARCH-0086).
         services.AddSingleton<Agyo.Scheduling.IScheduledTask, Agyo.Service.Librarian.Tasks.JobMaintenanceTask>();
@@ -82,12 +83,16 @@ public sealed class KoanAutoRegistrar : IKoanAutoRegistrar
         services.AddSingleton<IIndexingResumptionQueue, IndexingResumptionQueue>();
         services.AddSingleton<Metrics>();
         services.AddSingleton<TagResolver>();
-        services.AddScoped<ISearchService>(sp => sp.GetRequiredService<Search>());
+        // AGYO-0003: ingest + search re-platformed onto Rag.Corpus<LibraryDoc> (inline vector writes +
+        // chunk provenance). The bespoke Indexer/Search/Chunker/Embedding/VectorSyncWorker are retired
+        // (left registered-but-unused for now; full removal is a follow-up cleanup).
+        services.AddSingleton<RagIndexService>();
+        services.AddScoped<ISearchService, RagSearchService>();
         services.AddScoped<IndexProjectAsync>(sp =>
         {
-            var indexer = sp.GetRequiredService<Indexer>();
+            var indexer = sp.GetRequiredService<RagIndexService>();
             return (string projectId, bool force, CancellationToken cancellationToken, IProgress<IndexingProgress>? progress) =>
-                indexer.IndexProjectAsync(projectId, progress, cancellationToken, force);
+                indexer.IndexProjectAsync(projectId, force, cancellationToken, progress);
         });
 
         services.AddSingleton<MetricsCollector>();
